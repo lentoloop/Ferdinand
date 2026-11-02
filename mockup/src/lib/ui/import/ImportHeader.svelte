@@ -22,6 +22,7 @@
    without competing with the figure (48+, weight 400 on the patch) */
   .imp-head-block .page-h {
     padding-top: 4px;
+    font-family: var(--font-book);
     font-size: 32px;
     line-height: 44px;
     font-weight: 500;

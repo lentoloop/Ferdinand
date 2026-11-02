@@ -50,6 +50,15 @@
       ),
   );
   let busy = $derived(view === "loading" || view === "importing");
+  let skippedWords = $derived(
+    [
+      skipped.some((r) => r.status === "duplicate") ? "已有" : "",
+      skipped.some((r) => r.status === "would_duplicate") ? "重複" : "",
+      skipped.some((r) => r.status === "error") ? "錯誤" : "",
+    ]
+      .filter(Boolean)
+      .join("、"),
+  );
   let expanded = $state(false);
 </script>
 
@@ -127,9 +136,11 @@
               : "不會匯入"}
             {items}
             results={skipped}
-            note={skipped.some((r) => r.status === "error")
-              ? "錯誤的卡片：切換回 Yoin 修正，再重送。已有和重複的卡片不用處理。"
-              : "這些卡片不用處理。"}
+            note={skipped.every((r) => r.status === "error")
+              ? "切換回 Yoin 修正這幾張，再重送。"
+              : skipped.some((r) => r.status === "error")
+                ? "錯誤的卡片：切換回 Yoin 修正，再重送。已有和重複的卡片不用處理。"
+                : "這些卡片不用處理。"}
           />{/if}
         <ImportList
           title="會匯入"
@@ -147,7 +158,9 @@
             : view === "over-limit"
               ? "按下後先檢查，確認之前不會寫入。"
               : skipped.length
-                ? `已有、重複、錯誤的 ${skipped.length} 張不會匯入。`
+                ? skipped.every((r) => r.status === "error")
+                  ? `錯誤的 ${skipped.length} 張不會匯入，其餘 ${newRows.length} 張可以先匯入。`
+                  : `${skippedWords}的 ${skipped.length} 張不會匯入。`
                 : "按下後才會寫入 Ferdinand。"}
         label={view === "loading"
           ? "檢查中…"

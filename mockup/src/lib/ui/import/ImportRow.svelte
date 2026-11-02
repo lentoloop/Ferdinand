@@ -53,7 +53,7 @@
   {#if !uniform}<p class="imp-st" data-st={st.shape}>
       <span class="st-mark" data-st={st.shape} aria-hidden="true"></span><span
         >{st.word}</span
-      >{#if result.status === "duplicate" && result.note_id && firstIndex(items, result) === undefined}<a
+      >{#if result.status === "pending"}<span class="skel" aria-hidden="true"></span>{/if}{#if result.status === "duplicate" && result.note_id && firstIndex(items, result) === undefined}<a
           class="textlink imp-st-link"
           href={`/browse?note=${encodeURIComponent(result.note_id)}`}
           >查看已有的卡片</a
