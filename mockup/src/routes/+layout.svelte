@@ -20,7 +20,7 @@
     // Full-screen routes (no chrome — sidebar, topbar, or bottom nav).
     // /login lives here so the sketch-skin login page renders edge-to-edge
     // without the legacy cream chrome around it.
-    const fullscreenRoutes = ["/study", "/login"];
+    const fullscreenRoutes = ["/study", "/login", "/import"];
 
     let isFullscreen = $derived(
         fullscreenRoutes.some((r) => $page.url.pathname.startsWith(r)),

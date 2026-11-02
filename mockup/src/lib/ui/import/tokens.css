@@ -1,0 +1,109 @@
+/*
+ * Ferdinand × Yoin shared tokens (r2; r3 adds --press). wu chose indigo #34557A (dark #97B0CE) as the default accent. Values match Yoin r3a where a token
+ * already existed there; new tokens extend the same paper/ink system.
+ * Fonts resolve locally only; no remote requests.
+ * r2: the seal and its oxblood are gone; the single accent is a swappable set
+ * keyed by html[data-accent] (palette/PALETTE.md). No attribute = indigo.
+ */
+@font-face{font-family:Plex;src:local('IBM Plex Sans'),local('IBMPlexSans'),url('/fonts/plex.woff2') format('woff2');font-weight:400}
+@font-face{font-family:Plex;src:local('IBM Plex Sans Medium'),local('IBMPlexSans-Medium'),url('/fonts/plex.woff2') format('woff2');font-weight:500}
+@font-face{font-family:Book;src:local('Libre Baskerville'),local('LibreBaskerville-Regular'),url('/fonts/book.woff2') format('woff2');font-weight:400}
+@font-face{font-family:Book;src:local('Libre Baskerville Bold'),local('LibreBaskerville-Bold'),url('/fonts/book.woff2') format('woff2');font-weight:700}
+@font-face{font-family:Mono;src:local('IBM Plex Mono'),local('IBMPlexMono'),url('/fonts/mono.woff2') format('woff2')}
+
+.r3-import{
+  /* colour */
+  --page:#EDE8DD;
+  --sheet:#FFFCF5;
+  --ink:#252923;
+  --secondary:#565A52;
+  --on-accent:#FAF6EC;
+  --slip:#ECE5D7;            /* backing sheet, disabled */
+  --rule:#8B887D;            /* answer separator, chart target line: 3.4:1 on sheet */
+  --rule-soft:#A9A397;       /* rating row, table head, input border */
+  --hairline:#D8D1C3;        /* list rows, nav rules */
+  --control-edge:#7A7D74;    /* input/chip/tool borders: 3.4:1 on page, 4.1:1 on sheet (WCAG 1.4.11) */
+  --sheet-wash:#FAF7EF80;
+  --ink-2:#4A4A44;           /* count lines on sheet: 8.7:1 on sheet, 7.2:1 on page */
+  --ink-3:#5C584F;           /* quiet ink actions (DeckRow 複習, 設定, FormatBar tools): 6.9:1 on sheet, 5.8:1 on page */
+  --bar-ink:#847F74;         /* chart bars + deck-retention fills: 3.9:1 on sheet, 3.3:1 on page (WCAG 1.4.11) */
+  --chart-line:var(--ink);   /* forecast line, 1.5px: 14.4:1 on sheet, 12.1:1 on page */
+  --field-rule:#8F8A7E;      /* RichField writing line on the card: 3.4:1 on sheet */
+  --danger:#9B2C24;          /* armed 移除圖片 only (second press confirms) */
+  --again:#7D5443;           /* r3 redo: RatingRow 重來/Again label, a muted umber (not a red): 6.1:1 sheet, 4.9:1 on --press */
+  --deckle-line:#E2DACC;     /* 1px line under the torn foot */
+  --scrim:#25292399;         /* PrintDialog backdrop */
+  --dark-paper:#1E1D1A;      /* reference only: the dark-mode paper the --accent-dark values are checked on */
+  --field:#FBF8F1;           /* RichField / SearchBar fill: a shade under the sheet, like ruled stock */
+  --field-edge:#28241C38;    /* rgba(40,36,28,.22): field sides and top */
+  --tint:#EFEBE1;            /* paper-tint hover: toolbar tool, filter press */
+  --press:#E4DED1;           /* pressed/active tool fill (r3); ink on it 11.0:1. Fill vs sheet is only 1.3:1, so the pressed tool also gets a 2px ink foot rule */
+  --fade-page:#EDE8DD00;     /* transparent page, start of the 24px fade above pinned rows */
+
+  /* spacing */
+  --s1:4px;--s2:8px;--s3:12px;--s4:16px;--s5:24px;--s6:32px;
+
+  /* type families */
+  --font-book:Book,'Noto Serif CJK TC','Noto Serif TC',serif;
+  --font-book-ja:Book,'Noto Serif CJK JP','Noto Serif JP',serif;
+  --font-ui:Plex,'Noto Sans CJK TC','Noto Sans TC',sans-serif;
+  --font-ui-ja:Plex,'Noto Sans CJK JP','Noto Sans JP',sans-serif;
+  --font-mono:Mono,'Noto Sans Mono CJK TC',monospace;
+  --font-figure:var(--font-book); /* display numerals: home 105, stats 89.4% and 23 天 share Book 400, lining figures */
+
+  /* type scale: size / line-height */
+  --l-ja-ruby:2.1;           /* JA blocks that carry ruby reserve furigana room on every line */
+  --t-label:14px;--l-label:22px;
+  --t-body:16px;--l-body:26px;
+  --t-gloss:18px;--l-gloss:30px;
+  --t-sentence:20px;--l-sentence:32px;
+  --t-h3:24px;--l-h3:40px;
+  --t-h2:32px;--l-h2:44px;
+  --t-term:40px;--l-term:56px;
+  --t-display:56px;--l-display:76px;
+  --t-figure:56px;--l-figure:64px;  /* the one numeral size: 105, 89.4, 23 */
+  --t-rt:11px;--l-rt:16px;
+
+  /* shape */
+  --r-paper:0;--r-action:2px;
+  --target:44px;--primary-h:48px;--rating-h:76px;--reveal-h:56px;
+
+  /* material (card planes only). Paths are relative to this file and to components.css,
+     both in r2/; in the app they become /paper/*.webp. */
+  --tex-paper:url('/paper/paper-card.webp');
+  --tex-size:512px;
+  /* riso halftone: same pitch as assets/riso.webp at 90px (≈4px), drawn in the current accent so it swaps with it.
+     A screen of regular dots, not noise; riso.webp itself was teal-baked and cannot follow the token. */
+  --halftone:radial-gradient(circle at 50% 50%,var(--accent) 0 1.05px,transparent 1.45px);
+  --halftone-size:4px 4px;
+  --contact:drop-shadow(0 1px 0 #25292314);
+  --deckle:polygon(0 0,100% 0,100% calc(100% - 1px),91% calc(100% - 2px),80% 100%,68% calc(100% - 2px),57% calc(100% - 1px),43% calc(100% - 3px),31% calc(100% - 1px),19% calc(100% - 2px),8% 100%,0 calc(100% - 1px));
+
+  /* focus */
+  --focus:3px solid var(--accent);--focus-offset:3px;--focus-halo:0 0 0 2px var(--on-accent);
+}
+
+/* ---------- accent sets: one attribute swaps every accent-tinted thing ----------
+   --accent: links, primary, tab/nav marker, focus ring, DoneTick, chart today, halftone dots
+   --patch-ground / --patch-wash: riso patch ground, pressed and selected fills
+   --accent-dark: the same accent for a dark paper (--dark-paper), for the later dark mode
+   Contrast numbers: palette/PALETTE.md. Default (no attribute) = indigo. */
+.r3-import,.r3-import[data-accent=indigo]{--accent:#34557A;--patch-ground:#DCE3EA;--patch-wash:#DCE3EA99;--accent-dark:#97B0CE}
+.r3-import[data-accent=plum]{--accent:#6E4763;--patch-ground:#EADDE3;--patch-wash:#EADDE399;--accent-dark:#C9A2BC}
+.r3-import[data-accent=umber]{--accent:#6B4A2C;--patch-ground:#EBDFCF;--patch-wash:#EBDFCF99;--accent-dark:#C9A780}
+.r3-import[data-accent=teal]{--accent:#245F5A;--patch-ground:#D8E6DF;--patch-wash:#D8E6DF99;--accent-dark:#7FB5AC}  /* r1 reference */
+/* The app sets data-accent on <html> (app.js, ?accent=). --focus and --halftone use var(--accent) on .r3-import, the same
+   element, so they resolve per set there. The bare attribute selector also lets logo-compare.html preview a set on a row
+   (only --accent and --patch-ground are read there). */
+
+@media (min-width:1000px){
+  .r3-import{--t-term:56px;--l-term:76px;--t-rt:12px;--l-rt:18px;--t-figure:72px;--l-figure:80px}
+}
+
+@font-face{font-family:'Noto Sans CJK TC';src:local('Noto Sans CJK TC'),url('/fonts/noto-sans-tc.woff2') format('woff2');font-weight:400 700;font-display:swap}
+
+@font-face{font-family:'Noto Sans CJK JP';src:local('Noto Sans CJK JP'),url('/fonts/noto-sans-jp.woff2') format('woff2');font-weight:400 700;font-display:swap}
+
+@font-face{font-family:'Noto Serif CJK TC';src:local('Noto Serif CJK TC'),url('/fonts/noto-serif-tc.woff2') format('woff2');font-weight:400 700;font-display:swap}
+
+@font-face{font-family:'Noto Serif CJK JP';src:local('Noto Serif CJK JP'),url('/fonts/noto-serif-jp.woff2') format('woff2');font-weight:400 700;font-display:swap}

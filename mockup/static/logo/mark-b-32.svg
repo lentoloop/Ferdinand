@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" shape-rendering="crispEdges" style="color:var(--ink,#252923)"><style>.m-acc{fill:var(--accent,#34557A)}</style>
+<!-- b 網點, 32px cut (r3 redo): a whole-pixel F (4px stem, 2px arms, 1px foot and brackets). The foot ends on row 26;
+     row 27 stays empty (1px clear of the foot serif); the screen is 1px accent points on two alternate rows (28, 30)
+     across the foot's width, thinned on the outer row. Same as marks.js b.mid. -->
+<g class="m-acc">
+<rect x="5" y="28" width="1" height="1"/><rect x="7" y="28" width="1" height="1"/><rect x="9" y="28" width="1" height="1"/><rect x="11" y="28" width="1" height="1"/><rect x="13" y="28" width="1" height="1"/><rect x="15" y="28" width="1" height="1"/>
+<rect x="8" y="30" width="1" height="1"/><rect x="10" y="30" width="1" height="1"/><rect x="12" y="30" width="1" height="1"/>
+</g>
+<rect x="5" y="5" width="20" height="2" fill="currentColor"/>
+<rect x="24" y="7" width="2" height="2" fill="currentColor"/>
+<rect x="25" y="9" width="1" height="2" fill="currentColor"/>
+<rect x="8" y="7" width="1" height="1" fill="currentColor"/>
+<rect x="9" y="7" width="4" height="19" fill="currentColor"/>
+<rect x="13" y="15" width="6" height="2" fill="currentColor"/>
+<rect x="19" y="13" width="1" height="6" fill="currentColor"/>
+<rect x="8" y="25" width="1" height="1" fill="currentColor"/>
+<rect x="13" y="25" width="1" height="1" fill="currentColor"/>
+<rect x="5" y="26" width="12" height="1" fill="currentColor"/>
+</svg>

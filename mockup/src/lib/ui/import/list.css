@@ -1,0 +1,12 @@
+.r3-import {
+.st-mark{display:inline-block;flex:none;width:9px;height:9px;background:var(--ink-2)}
+.st-mark[data-st=new]{background:var(--accent)}
+.st-mark[data-st=done]{width:10px;background:var(--accent);clip-path:polygon(0 52%,16% 38%,38% 62%,84% 8%,100% 22%,38% 92%)}
+.st-mark[data-st=have]{background:linear-gradient(transparent 3.5px,var(--ink-2) 3.5px 5.5px,transparent 5.5px)}
+.st-mark[data-st=repeat]{background:linear-gradient(transparent 1.5px,var(--ink-2) 1.5px 3.5px,transparent 3.5px 5.5px,var(--ink-2) 5.5px 7.5px,transparent 7.5px)}
+.st-mark[data-st=error]{width:10px;background:var(--again);clip-path:polygon(50% 0,100% 100%,0 100%)}
+.st-mark[data-st=pending]{width:11px;background:radial-gradient(circle,var(--secondary) 0 1.1px,transparent 1.5px) 0 50%/3.67px 4px repeat-x}
+.st-mark[data-st=held]{background:linear-gradient(90deg,var(--ink-2) 0 50%,transparent 50%);box-shadow:inset 0 0 0 1px var(--ink-2)}
+.skel{display:inline-block;width:48px;height:10px;background:var(--hairline);vertical-align:middle}
+.skel--wide{width:136px}
+}

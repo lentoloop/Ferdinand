@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48" style="color:var(--ink,#252923)"><style>.m-acc{fill:var(--accent,#34557A)}</style>
+<!-- b 網點 (r3 redo, Settled Screen): the book-serif F in ink; an accent halftone of true dots settled on the baseline,
+     graded to nothing toward every edge (no ground, no tile, no frame). The field is trimmed to the foot serif: dot
+     centres 7.3–25.7 under a foot of x 8–25 (about 1.1x), centred on x 16.5. Same dots as MARK_B_SCREEN in marks.js. -->
+<g class="m-acc" transform="rotate(-1.5 16.5 40)">
+<circle cx="9.6" cy="35.4" r=".3"/><circle cx="11.9" cy="35.4" r=".4"/><circle cx="14.2" cy="35.4" r=".42"/><circle cx="16.5" cy="35.4" r=".45"/><circle cx="18.8" cy="35.4" r=".4"/><circle cx="21.1" cy="35.4" r=".38"/><circle cx="23.4" cy="35.4" r=".3"/>
+<circle cx="8.45" cy="37.7" r=".5"/><circle cx="10.75" cy="37.7" r=".72"/><circle cx="13.05" cy="37.7" r=".8"/><circle cx="15.35" cy="37.7" r=".82"/><circle cx="17.65" cy="37.7" r=".8"/><circle cx="19.95" cy="37.7" r=".8"/><circle cx="22.25" cy="37.7" r=".7"/><circle cx="24.55" cy="37.7" r=".48"/>
+<circle cx="7.3" cy="40" r=".4"/><circle cx="9.6" cy="40" r=".75"/><circle cx="11.9" cy="40" r=".95"/><circle cx="14.2" cy="40" r="1"/><circle cx="16.5" cy="40" r="1"/><circle cx="18.8" cy="40" r=".98"/><circle cx="21.1" cy="40" r=".95"/><circle cx="23.4" cy="40" r=".75"/><circle cx="25.7" cy="40" r=".4"/>
+<circle cx="8.45" cy="42.3" r=".48"/><circle cx="10.75" cy="42.3" r=".7"/><circle cx="13.05" cy="42.3" r=".8"/><circle cx="15.35" cy="42.3" r=".8"/><circle cx="17.65" cy="42.3" r=".82"/><circle cx="19.95" cy="42.3" r=".78"/><circle cx="22.25" cy="42.3" r=".68"/><circle cx="24.55" cy="42.3" r=".45"/>
+<circle cx="9.6" cy="44.6" r=".32"/><circle cx="11.9" cy="44.6" r=".4"/><circle cx="14.2" cy="44.6" r=".45"/><circle cx="16.5" cy="44.6" r=".42"/><circle cx="18.8" cy="44.6" r=".4"/><circle cx="21.1" cy="44.6" r=".36"/><circle cx="23.4" cy="44.6" r=".3"/>
+</g>
+<path fill="currentColor" d="M8 8H37L38 17H36.6Q35 12 30 11.6H20V22.6H27Q29 22.6 29.4 19.5H31V29.5H29.4Q29 26.4 27 26.4H20V37.4Q20 38.6 22 38.8L25 39V40H8V39L11 38.8Q13 38.6 13 37.4V10.6Q13 9.4 11 9.2L8 9Z"/>
+</svg>

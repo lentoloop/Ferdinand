@@ -14,8 +14,11 @@ export default defineConfig({
         // SvelteKit dev server (5174) and the prod-embedded server (40001)
         // can share the same client code without env switches.
         proxy: {
-            "/api": "http://127.0.0.1:40001",
-            "/media": "http://127.0.0.1:40001",
+            "/api": {
+                target: process.env.ANKI_SERVER_URL || "http://127.0.0.1:40001",
+                changeOrigin: false,
+            },
+            "/media": process.env.ANKI_SERVER_URL || "http://127.0.0.1:40001",
         },
     },
 });

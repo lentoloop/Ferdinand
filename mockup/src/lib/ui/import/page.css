@@ -1,0 +1,22 @@
+
+/* the dock is the pinned edge on this page, so the TabBar's 24px fade would wash the dock's foot (r3 sheet-open rule) */
+.app--import .tabbar::before{display:none}
+/* fixes before wu: one clearance for every pinned bar. --imp-clear = dock + TabBar (<1000 only) + safe area + 24px.
+   The main column's padding-bottom and the scroll padding both read it, so the last row, a focused row and a
+   find-in-page hit all stop 24px above the bars. import.js replaces the 152px default with the dock's measured height
+   (its hint wraps to one or two lines). P "prefer semantic tokens over raw values"; P "prefer system consistency". */
+:root:has(.app--import){--imp-dock-h:0px;--imp-tab-h:56px;--imp-clear:calc(var(--imp-dock-h) + var(--imp-tab-h) + env(safe-area-inset-bottom) + 24px);scroll-padding-bottom:var(--imp-clear)}
+:root:has(.imp-dock){--imp-dock-h:152px}
+.app--import .main{padding-bottom:var(--imp-clear)}
+@media (min-width:1000px){
+  :root:has(.app--import){--imp-tab-h:0px}
+  .app--import .main{padding-bottom:max(var(--imp-clear),64px)}  /* states without a dock keep r3's 64px foot */
+}
+
+
+@media(max-width:999.98px){
+.r3-import[data-state=all-new] .imp-summary{padding:20px 24px 16px}
+.r3-import[data-state=all-new] .imp-sum-b{margin-top:16px;padding-top:16px}
+.r3-import[data-state=all-new] .imp-decks li{padding:6px 0}
+.r3-import[data-state=all-new] .imp-ledger{margin-top:16px}
+}
