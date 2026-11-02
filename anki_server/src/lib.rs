@@ -10,3 +10,6 @@ mod routes;
 mod seed_notetypes;
 pub mod state;
 mod static_assets;
+
+// Integration tests use the same route registration as the server.
+pub use routes::router as api_router;

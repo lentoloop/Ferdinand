@@ -27,6 +27,7 @@ base64.workspace = true
 clap = { workspace = true }
 mime_guess = "2"
 regex.workspace = true
+url = "2"
 rusqlite.workspace = true
 serde = { workspace = true }
 serde_json.workspace = true
@@ -42,6 +43,7 @@ async-trait.workspace = true
 time = { version = "0.3", features = ["serde"] }
 
 [dev-dependencies]
+tower = { version = "0.5", features = ["util"] }
 http-body-util = "0.1"
 tokio = { workspace = true, features = ["rt", "macros", "rt-multi-thread"] }
 futures = { workspace = true }

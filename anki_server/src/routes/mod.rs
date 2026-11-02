@@ -13,6 +13,7 @@ pub mod saved_searches;
 pub mod stats;
 pub mod study;
 pub mod tags;
+pub mod yoin_import;
 
 use axum::routing::{delete, get, patch, post};
 use axum::Router;
@@ -125,6 +126,7 @@ pub fn router() -> Router<ServerState> {
         // require_auth via the protected_router merge), no admin gate —
         // any user can ingest their own deck export.
         .route("/api/import/apkg", post(import::import_apkg))
+        .route("/api/import/yoin", post(yoin_import::import_yoin))
 }
 
 #[derive(Serialize, utoipa::ToSchema)]

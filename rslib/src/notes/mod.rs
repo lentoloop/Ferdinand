@@ -87,6 +87,12 @@ impl TryFrom<anki_proto::notes::AddNoteRequest> for AddNoteRequest {
 }
 
 impl Collection {
+    /// Look up a GUID in this collection only. Callers must keep their collection
+    /// lock across this lookup and any subsequent insert to prevent duplicates.
+    pub fn note_id_by_guid(&self, guid: &str) -> Result<Option<NoteId>> {
+        self.storage.note_id_by_guid(guid)
+    }
+
     pub fn add_note(&mut self, note: &mut Note, did: DeckId) -> Result<OpOutput<usize>> {
         self.transact(Op::AddNote, |col| col.add_note_inner(note, did))
     }
@@ -690,6 +696,25 @@ mod test {
     use crate::error::Result;
     use crate::prelude::*;
     use crate::search::SortMode;
+
+    #[test]
+    fn guid_lookup_is_collection_local_and_parameterized() -> Result<()> {
+        let mut col = Collection::new();
+        let other = Collection::new();
+        let guid = "yoin:quoted' OR 1=1 --";
+        assert_eq!(col.note_id_by_guid(guid)?, None);
+        let nt = col.get_notetype_by_name("Basic")?.unwrap();
+        let mut note = nt.new_note();
+        note.guid = guid.into();
+        note.set_field(0, "test")?;
+        col.add_note(&mut note, DeckId(1))?;
+        assert_eq!(col.note_id_by_guid(guid)?, Some(note.id));
+        assert_eq!(col.note_id_by_guid("missing")?, None);
+        assert_eq!(other.note_id_by_guid(guid)?, None);
+        col.remove_notes(&[note.id])?;
+        assert_eq!(col.note_id_by_guid(guid)?, None);
+        Ok(())
+    }
 
     #[test]
     fn test_base91() {

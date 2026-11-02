@@ -24,6 +24,14 @@ pub(crate) fn join_fields(fields: &[String]) -> String {
 }
 
 impl super::SqliteStorage {
+    pub(crate) fn note_id_by_guid(&self, guid: &str) -> Result<Option<NoteId>> {
+        self.db
+            .prepare_cached("SELECT id FROM notes WHERE guid = ? LIMIT 1")?
+            .query_and_then([guid], |row| row.get(0).map_err(Into::into))?
+            .next()
+            .transpose()
+    }
+
     pub fn get_note(&self, nid: NoteId) -> Result<Option<Note>> {
         self.db
             .prepare_cached(concat!(include_str!("get.sql"), " where id = ?"))?
