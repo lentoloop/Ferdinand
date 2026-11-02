@@ -94,6 +94,11 @@ describe("approved import states", () => {
     await fireEvent.click(screen.getByRole("button", { name: "匯入 20 張" }));
     expect(onconfirm).toHaveBeenCalledOnce();
   });
+  it("keeps the checked deck counts while importing",()=>{
+    const {container}=mount('importing');
+    expect(container.querySelector('.imp-decks .skel')).toBeNull();
+    expect(container.querySelector('.imp-decks')?.textContent).toContain('14');
+  });
   it("disables the confirm while importing", () => {
     mount("importing");
     expect(

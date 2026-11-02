@@ -96,7 +96,7 @@
   <div class="imp-sum-b">
     <DeckPlan
       {response}
-      {pending}
+      pending={view === "loading"}
       later={view === "over-limit"}
     />{#if view === "done"}<div class="imp-actions">
         {#if reviewDeck}<a class="primary" href={`/study/${reviewDeck.id}`}
