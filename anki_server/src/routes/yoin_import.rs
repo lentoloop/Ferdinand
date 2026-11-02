@@ -1,5 +1,5 @@
 //! Explicit, session-scoped Yoin batch import. No request content is logged.
-use std::collections::HashSet;
+use std::collections::HashMap;
 
 use anki::decks::{Deck, DeckKind, NativeDeckName};
 use anki::notes::Note;
@@ -62,15 +62,28 @@ pub struct ItemResult {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub note_id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub first_index: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub deck: Option<&'static str>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<&'static str>,
 }
 
 #[derive(Debug, Serialize)]
+pub struct DeckResult {
+    pub name: &'static str,
+    pub exists: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub would_create: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub created: Option<bool>,
+}
+
+#[derive(Debug, Serialize)]
 pub struct ImportResponse {
     pub dry_run: bool,
     pub results: Vec<ItemResult>,
+    pub decks: Vec<DeckResult>,
 }
 
 fn forbidden() -> ServerError {
@@ -278,12 +291,14 @@ pub async fn import_yoin(
         }
     }
     let mut results = Vec::with_capacity(request.items.len());
-    let mut preview_guids = HashSet::new();
+    let mut first_guids = HashMap::new();
+    let mut decks: Vec<DeckResult> = Vec::new();
     for (index, value) in request.items.into_iter().enumerate() {
         let mut result = ItemResult {
             index,
             status: "error",
             note_id: None,
+            first_index: None,
             deck: None,
             error: None,
         };
@@ -301,10 +316,23 @@ pub async fn import_yoin(
                 continue;
             }
         };
+        let deck_index = match decks.iter().position(|deck| deck.name == item.deck()) {
+            Some(index) => index,
+            None => {
+                decks.push(DeckResult {
+                    name: item.deck(),
+                    exists: col.get_deck_id(item.deck())?.is_some(),
+                    would_create: request.dry_run.then_some(false),
+                    created: (!request.dry_run).then_some(false),
+                });
+                decks.len() - 1
+            }
+        };
         let guid = format!("yoin:{}", item.id);
         result.deck = Some(item.deck());
         if let Some(id) = col.note_id_by_guid(&guid)? {
             result.status = "duplicate";
+            result.first_index = first_guids.get(&guid).copied();
             result.note_id = Some(id.0.to_string());
         } else if col
             .get_deck_id(item.deck())?
@@ -315,11 +343,14 @@ pub async fn import_yoin(
         {
             result.error = Some("cannot import into a filtered deck");
         } else if request.dry_run {
-            result.status = if preview_guids.insert(guid) {
-                "would_create"
+            if let Some(first_index) = first_guids.get(&guid) {
+                result.status = "would_duplicate";
+                result.first_index = Some(*first_index);
             } else {
-                "would_duplicate"
-            };
+                result.status = "would_create";
+                first_guids.insert(guid, index);
+                decks[deck_index].would_create = Some(!decks[deck_index].exists);
+            }
         } else {
             let added = (|| -> ApiResult<String> {
                 let did = if let Some(did) = col.get_deck_id(item.deck())? {
@@ -334,10 +365,11 @@ pub async fn import_yoin(
                     let mut deck = Deck::new_normal();
                     deck.name = NativeDeckName::from_human_name(item.deck());
                     col.add_deck(&mut deck)?;
+                    decks[deck_index].created = Some(true);
                     deck.id
                 };
                 let mut note = Note::new(&nt);
-                note.guid = guid;
+                note.guid = guid.clone();
                 for (name, value) in [
                     "Front",
                     "Back",
@@ -362,6 +394,7 @@ pub async fn import_yoin(
             })();
             match added {
                 Ok(id) => {
+                    first_guids.insert(guid, index);
                     result.status = "created";
                     result.note_id = Some(id);
                 }
@@ -373,5 +406,6 @@ pub async fn import_yoin(
     Ok(Json(ImportResponse {
         dry_run: request.dry_run,
         results,
+        decks,
     }))
 }
