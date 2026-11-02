@@ -42,7 +42,7 @@
   );
   let skipped = $derived(
     response.results
-      .filter((r) => !["would_create", "created"].includes(r.status))
+      .filter((r) => !["would_create", "created"].includes(r.status) && !(view === "importing" && !response.dry_run && r.error === "unable to create note"))
       .toSorted(
         (a, b) =>
           (a.status === "error" ? 0 : a.status === "duplicate" ? 1 : 2) -

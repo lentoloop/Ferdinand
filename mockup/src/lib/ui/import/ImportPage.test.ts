@@ -114,6 +114,11 @@ describe("approved import states", () => {
     mount("preview", {dry_run: true, results: batch.results.map(({first_index, ...r}) => r)});
     expect(screen.getByText("這批裡重複")).toBeTruthy();
   });
+  it("shows only the failed card during a partial retry", () => {
+    const {container} = render(ImportPage, {view: "importing", items: batch.items.slice(0, 2), response: {dry_run: false, results: [{index: 0, status: "created"}, {index: 1, status: "error", error: "unable to create note"}]}, onconfirm: vi.fn(), onfirst: vi.fn(), onretry: vi.fn()});
+    expect(container.querySelectorAll('[data-component="ImportRow"]')).toHaveLength(1);
+    expect(container.querySelector('.imp-figure')?.textContent).toContain("1");
+  });
   it("renders a failed note creation retry without resending successful rows", async () => {
     const onretry = vi.fn();
     render(ImportPage, {view: "done-partial", items: batch.items.slice(0, 2), response: {dry_run: false, results: [{index: 0, status: "created"}, {index: 1, status: "error", error: "unable to create note"}]}, onconfirm: vi.fn(), onfirst: vi.fn(), onretry});
