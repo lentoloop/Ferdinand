@@ -3,7 +3,7 @@
 //! active-recall, contrast-encoding, mnemonic, and source-attribution.
 //!
 //! Idempotent by exact-name lookup: if either notetype already exists
-//! on the collection it is a no-op for that one. Runs unconditionally
+//! on the collection, only pending field migrations run. Runs unconditionally
 //! at server start (unlike `bootstrap::seed_if_requested`, which is
 //! gated by `ANKI_SERVER_BOOTSTRAP=1` and seeds *notes*) — adding two
 //! empty notetypes is cheap, opt-out is via `FERDINAND_SKIP_NOTETYPE_SEED=1`.
@@ -43,6 +43,8 @@ pub const CONCEPT_DEEP_FIELDS: &[&str] = &[
     "Source",
     "ReverseEnabled",
     "Image",
+    "Phonetic",
+    "PartOfSpeech",
 ];
 
 pub const CLOZE_DEEP_FIELDS: &[&str] = &["Text", "Why", "Example", "Source"];
@@ -50,14 +52,38 @@ pub const CLOZE_DEEP_FIELDS: &[&str] = &["Text", "Why", "Example", "Source"];
 /// Inject both notetypes if absent. Honours `FERDINAND_SKIP_NOTETYPE_SEED=1`
 /// for users who manage their own notetypes and don't want the autoseed.
 pub fn seed_if_missing(col: &mut Collection) -> anyhow::Result<()> {
-    if std::env::var("FERDINAND_SKIP_NOTETYPE_SEED").ok().as_deref() == Some("1") {
+    if std::env::var("FERDINAND_SKIP_NOTETYPE_SEED")
+        .ok()
+        .as_deref()
+        == Some("1")
+    {
         tracing::debug!("notetype seed skipped: FERDINAND_SKIP_NOTETYPE_SEED=1");
         return Ok(());
     }
     seed_one(col, CONCEPT_DEEP_NAME, build_concept_deep)?;
     seed_one(col, CLOZE_DEEP_NAME, build_cloze_deep)?;
     migrate_concept_deep_add_image(col)?;
+    migrate_concept_deep_display_fields(col)?;
     cleanup_legacy_if_empty(col)?;
+    Ok(())
+}
+
+/// Append display fields without changing templates or existing field ordinals.
+fn migrate_concept_deep_display_fields(col: &mut Collection) -> anyhow::Result<()> {
+    let Some(arc) = col.get_notetype_by_name(CONCEPT_DEEP_NAME)? else {
+        return Ok(());
+    };
+    let mut nt = (*arc).clone();
+    let mut changed = false;
+    for name in ["Phonetic", "PartOfSpeech"] {
+        if !nt.fields.iter().any(|field| field.name == name) {
+            nt.fields.push(NoteField::new(name));
+            changed = true;
+        }
+    }
+    if changed {
+        col.update_notetype(&mut nt, false)?;
+    }
     Ok(())
 }
 
@@ -112,10 +138,12 @@ fn migrate_concept_deep_add_image(col: &mut Collection) -> anyhow::Result<()> {
 /// preserve upstream parity (e.g. importing community .apkg decks that
 /// expect Basic to exist).
 fn cleanup_legacy_if_empty(col: &mut Collection) -> anyhow::Result<()> {
-    if std::env::var("FERDINAND_KEEP_LEGACY_NOTETYPES").ok().as_deref() == Some("1") {
-        tracing::debug!(
-            "legacy notetype cleanup skipped: FERDINAND_KEEP_LEGACY_NOTETYPES=1"
-        );
+    if std::env::var("FERDINAND_KEEP_LEGACY_NOTETYPES")
+        .ok()
+        .as_deref()
+        == Some("1")
+    {
+        tracing::debug!("legacy notetype cleanup skipped: FERDINAND_KEEP_LEGACY_NOTETYPES=1");
         return Ok(());
     }
     for name in LEGACY_NOTETYPE_NAMES {
@@ -140,11 +168,7 @@ fn cleanup_legacy_if_empty(col: &mut Collection) -> anyhow::Result<()> {
     Ok(())
 }
 
-fn seed_one(
-    col: &mut Collection,
-    name: &str,
-    builder: fn() -> Notetype,
-) -> anyhow::Result<()> {
+fn seed_one(col: &mut Collection, name: &str, builder: fn() -> Notetype) -> anyhow::Result<()> {
     if col.get_notetype_by_name(name)?.is_some() {
         tracing::debug!(notetype = name, "seed skipped: already present");
         return Ok(());
@@ -363,10 +387,10 @@ mod tests {
     use super::*;
 
     #[test]
-    fn concept_deep_has_nine_fields_and_two_templates() {
+    fn concept_deep_has_eleven_fields_and_two_templates() {
         let nt = build_concept_deep();
         assert_eq!(nt.name, CONCEPT_DEEP_NAME);
-        assert_eq!(nt.fields.len(), 9);
+        assert_eq!(nt.fields.len(), 11);
         assert_eq!(nt.templates.len(), 2);
         assert_eq!(nt.config.kind, NotetypeKind::Normal as i32);
         let names: Vec<&str> = nt.fields.iter().map(|f| f.name.as_str()).collect();
@@ -392,7 +416,10 @@ mod tests {
             let open = format!("{{{{#{field}}}}}");
             let close = format!("{{{{/{field}}}}}");
             assert!(afmt.contains(&open), "missing open conditional for {field}");
-            assert!(afmt.contains(&close), "missing close conditional for {field}");
+            assert!(
+                afmt.contains(&close),
+                "missing close conditional for {field}"
+            );
         }
         assert!(afmt.contains("{{Back}}"));
         assert!(afmt.contains("{{FrontSide}}"));

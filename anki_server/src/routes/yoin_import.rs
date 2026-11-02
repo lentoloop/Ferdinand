@@ -31,6 +31,8 @@ struct Item {
     chunk: String,
     sentence: String,
     reading: Option<String>,
+    phonetic: Option<String>,
+    pos: Option<String>,
     meaning_zh: String,
     meaning_target: String,
     example: String,
@@ -144,6 +146,10 @@ impl Item {
             return Err("invalid origin or language");
         }
         if !text_valid(&self.chunk, 500)
+            || [self.phonetic.as_deref(), self.pos.as_deref()]
+                .into_iter()
+                .flatten()
+                .any(|s| !s.is_empty() && !text_valid(s, 500))
             || !text_valid(&self.sentence, 2000)
             || !text_valid(&self.meaning_zh, 2000)
             || !text_valid(&self.meaning_target, 2000)
@@ -197,7 +203,7 @@ impl Item {
         }
     }
 
-    fn fields(&self) -> [String; 4] {
+    fn fields(&self) -> [String; 6] {
         let front = [&self.chunk, &self.sentence]
             .into_iter()
             .chain(self.reading.iter())
@@ -227,7 +233,14 @@ impl Item {
                 escape(url)
             ));
         }
-        [front, back, escape(&self.example), source.join("<br>")]
+        [
+            front,
+            back,
+            escape(&self.example),
+            source.join("<br>"),
+            escape(self.phonetic.as_deref().unwrap_or_default()),
+            escape(self.pos.as_deref().unwrap_or_default()),
+        ]
     }
 }
 
@@ -325,9 +338,16 @@ pub async fn import_yoin(
                 };
                 let mut note = Note::new(&nt);
                 note.guid = guid;
-                for (name, value) in ["Front", "Back", "Example", "Source"]
-                    .into_iter()
-                    .zip(item.fields())
+                for (name, value) in [
+                    "Front",
+                    "Back",
+                    "Example",
+                    "Source",
+                    "Phonetic",
+                    "PartOfSpeech",
+                ]
+                .into_iter()
+                .zip(item.fields())
                 {
                     let index = nt
                         .fields

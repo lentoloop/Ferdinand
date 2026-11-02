@@ -484,3 +484,94 @@ async fn resend_after_collection_reopen_is_duplicate() {
         first["results"][0]["note_id"]
     );
 }
+
+#[tokio::test]
+async fn display_fields_are_optional_escaped_and_bounded() {
+    let app = TestApp::new();
+    for (id, value) in [('a', None), ('b', Some("")), ('c', Some("/<æ>&\"'/"))] {
+        let mut input = item(id);
+        if let Some(value) = value {
+            input["phonetic"] = json!(value);
+            input["pos"] = json!(value);
+        }
+        let response = app.import("alice", vec![input], false).await;
+        let state = app.state.app_state_for("alice").await.unwrap();
+        let mut col = state.col.lock().await;
+        let note = col.storage.get_note(note_id(&response)).unwrap().unwrap();
+        let nt = col.get_notetype(note.notetype_id).unwrap().unwrap();
+        for name in ["Phonetic", "PartOfSpeech"] {
+            let index = nt.fields.iter().position(|f| f.name == name).unwrap();
+            assert_eq!(
+                note.fields()[index],
+                if id == 'c' {
+                    "/&lt;æ&gt;&amp;&quot;&#39;/"
+                } else {
+                    ""
+                }
+            );
+        }
+    }
+    for name in ["phonetic", "pos"] {
+        for value in ["é".repeat(251), "\u{0000}".into(), " ".into()] {
+            let mut input = item('d');
+            input[name] = json!(value);
+            assert_eq!(
+                app.import("alice", vec![input], false).await["results"][0]["status"],
+                "error"
+            );
+        }
+    }
+}
+
+#[tokio::test]
+async fn old_notetype_upgrade_preserves_fields_templates_and_scheduling() {
+    let app = TestApp::new();
+    let state = app.state.app_state_for("alice").await.unwrap();
+    {
+        let mut col = state.col.lock().await;
+        let mut nt = (*col.get_notetype_by_name("Concept-Deep").unwrap().unwrap()).clone();
+        nt.fields
+            .retain(|f| !matches!(f.name.as_str(), "Phonetic" | "PartOfSpeech"));
+        nt.config.css = "custom CSS".into();
+        col.update_notetype(&mut nt, false).unwrap();
+        let mut note = anki::notes::Note::new(&nt);
+        note.set_field(0, "Existing front").unwrap();
+        note.set_field(1, "Existing back").unwrap();
+        col.add_note(&mut note, anki::decks::DeckId(1)).unwrap();
+        let cards = col.storage.all_cards_of_note(note.id).unwrap();
+        col.set_due_date(&[cards[0].id()], "17", None).unwrap();
+        let cards = col.storage.all_cards_of_note(note.id).unwrap();
+        let fields = note.fields().to_vec();
+        let old_nt = (*col.get_notetype_by_name("Concept-Deep").unwrap().unwrap()).clone();
+        for _ in 0..2 {
+            anki_server::seed_notetypes::seed_if_missing(&mut col).unwrap();
+        }
+        let upgraded = col.get_notetype_by_name("Concept-Deep").unwrap().unwrap();
+        assert_eq!(
+            &upgraded.fields[..old_nt.fields.len()],
+            old_nt.fields.as_slice()
+        );
+        assert_eq!(upgraded.fields.len(), old_nt.fields.len() + 2);
+        assert_eq!(upgraded.templates, old_nt.templates);
+        assert_eq!(upgraded.config, old_nt.config);
+        let saved = col.storage.get_note(note.id).unwrap().unwrap();
+        assert_eq!(&saved.fields()[..fields.len()], fields.as_slice());
+        assert!(saved.fields()[fields.len()..].iter().all(String::is_empty));
+        assert_eq!(col.storage.all_cards_of_note(note.id).unwrap(), cards);
+    }
+    assert_eq!(
+        app.import("alice", vec![item('a')], false).await["results"][0]["status"],
+        "created"
+    );
+}
+
+#[tokio::test]
+async fn recorded_contract_response() {
+    let app = TestApp::new();
+    let response = app
+        .import("alice", vec![item('a'), item('a'), json!({})], true)
+        .await;
+    let expected: Value =
+        serde_json::from_str(include_str!("fixtures/ferdinand-preview.json")).unwrap();
+    assert_eq!(response, expected);
+}

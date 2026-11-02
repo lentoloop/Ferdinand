@@ -7,7 +7,7 @@ pub mod auth;
 mod bootstrap;
 mod error;
 mod routes;
-mod seed_notetypes;
+pub mod seed_notetypes;
 pub mod state;
 mod static_assets;
 
