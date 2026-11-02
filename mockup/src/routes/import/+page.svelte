@@ -133,8 +133,10 @@
       active = false;
     }
   }
+  let cancelled = false;
   function cancel() {
-    if (view === "done" || !handoff) return;
+    if (cancelled || view === "done" || !handoff) return;
+    cancelled = true;
     notify(
       view === "importing"
         ? { type: "ferdinand:error", status: 0, unconfirmed: true }
@@ -147,7 +149,10 @@
     const receive = (event: MessageEvent) => {
       if (active || handoff || auth.status !== "authed") return;
       const accepted = receiver.accept(event);
-      if (!accepted) return;
+      if (!accepted) {
+        if (dev) console.debug("[import] ignored handoff message");
+        return;
+      }
       handoff = accepted;
       items = accepted.items;
       if (items.length > 100) {
@@ -214,6 +219,7 @@
           window.opener.postMessage({ type: "ferdinand:ready", v: 1 }, origin);
     })();
     return () => {
+      cancel();
       stop = true;
       disposed = true;
       controller?.abort();

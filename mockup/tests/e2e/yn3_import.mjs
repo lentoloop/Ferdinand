@@ -227,6 +227,8 @@ try {
     await over.getByRole("button", { name: "匯入 0 張" }).isDisabled(),
     "no new items cannot be confirmed",
   );
+  await over.getByRole('link',{name:'瀏覽',exact:true}).first().click();
+  await page.waitForFunction(nonce=>window.received.some(message=>message.type==='ferdinand:cancel' && message.nonce===nonce),overflow.nonce);
   await over.close();
   context.off("request", track);
   const uncertain = {
@@ -288,7 +290,7 @@ try {
   assert.equal(cards.total, 2, "uncertain retry creates no extra note");
   await context.close();
   console.log(
-    "PASS: 11 scenarios, including over-limit, exact first-100 cut, and safe retry after a committed write with a 503 response",
+    "PASS: 12 scenarios, including navigation cancellation, over-limit, exact first-100 cut, and safe retry after a committed write with a 503 response",
   );
 } finally {
   await browser?.close();
