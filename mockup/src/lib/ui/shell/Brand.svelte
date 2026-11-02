@@ -13,7 +13,9 @@
     width={size}
     height={size}
     alt=""
-  /><span class="wordmark">Ferdinand</span></span
+  /><span class="wordmark" style:font-size={`${size === 32 ? 28 : 24}px`}
+    >Ferdinand</span
+  ></span
 >
 
 <style>

@@ -1,3 +1,4 @@
+import {browserOptions} from './browser.mjs';
 import { chromium } from "playwright";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
@@ -87,7 +88,7 @@ try {
     "vite.log",
   );
   await ready(uiOrigin);
-  browser = await chromium.launch({ headless: true });
+  browser = await chromium.launch(browserOptions());
   const context = await browser.newContext();
   const login = await context.request.post(`${uiOrigin}/api/auth/login`, {
     data: { username: "demo", password },

@@ -4,23 +4,31 @@
   import TabBar from "./TabBar.svelte";
   let {
     children,
-    state,
+    state = "",
+    focus = false,
     user,
     dueCount,
-    onlogout,
+    onlogout = () => {},
   }: {
     children: Snippet;
-    state: string;
+    state?: string;
+    focus?: boolean;
     user?: string;
     dueCount?: number;
-    onlogout: () => void;
+    onlogout?: () => void;
   } = $props();
 </script>
 
-<div class="app app--import r3-import" data-state={state}>
-  <SideNav {user} {dueCount} {onlogout} />
+<div
+  class="app"
+  class:r3-import={!!state}
+  class:app--import={!!state}
+  class:focus
+  data-state={state}
+>
+  {#if !focus}<SideNav {user} {dueCount} {onlogout} />{/if}
   <main class="main">{@render children()}</main>
-  <TabBar />
+  {#if !focus}<TabBar />{/if}
 </div>
 
 <style>
@@ -31,20 +39,33 @@
     font: 400 var(--t-body)/var(--l-body) var(--font-ui);
   }
   .main {
-    padding: 0 20px var(--imp-clear);
+    padding: 0 20px
+      calc(var(--bar-clear) + var(--bar-h) + env(safe-area-inset-bottom));
     max-width: 640px;
     width: 100%;
     margin: 0 auto;
     min-width: 0;
+  }
+  .app--import .main {
+    padding-bottom: var(--imp-clear);
+  }
+  .app.focus {
+    display: block;
+  }
+  .focus .main {
+    padding-bottom: 0;
   }
   @media (min-width: 1000px) {
     .app {
       display: grid;
       grid-template-columns: 224px minmax(0, 1fr);
     }
+    .focus .main {
+      max-width: none;
+    }
     .main {
       max-width: 1016px;
-      padding: 0 48px max(var(--imp-clear), 64px);
+      padding: 0 48px max(calc(var(--bar-clear) + var(--bar-h)), 64px);
     }
   }
 </style>

@@ -1,1 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><circle cx="16" cy="16" r="14" fill="oklch(50% 0.13 40)"/><path d="M10 20l6-10 6 10" stroke="oklch(98% 0.012 85)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16" shape-rendering="crispEdges" style="color:var(--ink,#252923)"><style>.m-acc{fill:var(--accent,#34557A)}</style>
+<!-- b 網點, 16px cut (r3 redo): the F is all ink and the dominant shape (cap rows 2–12, foot row 12). No dots: the screen
+     becomes one snapped 2px accent bar on rows 14–15 under the foot's exact width (x 3–9), with row 13 clear, so accent
+     never touches ink. Same as marks.js b.small. -->
+<rect class="m-acc" x="3" y="14" width="7" height="2"/>
+<rect x="3" y="2" width="10" height="2" fill="currentColor"/>
+<rect x="12" y="4" width="1" height="2" fill="currentColor"/>
+<rect x="5" y="4" width="3" height="8" fill="currentColor"/>
+<rect x="8" y="7" width="2" height="2" fill="currentColor"/>
+<rect x="10" y="6" width="1" height="4" fill="currentColor"/>
+<rect x="3" y="12" width="7" height="1" fill="currentColor"/>
+</svg>

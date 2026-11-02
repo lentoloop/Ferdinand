@@ -1,40 +1,36 @@
-/**
- * Heatmap layout regression test — close #15.
- * Asserts that the stats page heatmap stretches to container width
- * by verifying the CSS uses responsive sizing (not a fixed px grid).
- */
-import { describe, expect, it } from "vitest";
-import { readFileSync } from "fs";
-import { resolve } from "path";
-
-const statsPage = readFileSync(
-    resolve(__dirname, "../../src/routes/stats/+page.svelte"),
-    "utf8",
-);
-
-describe("#15 — heatmap fills container width", () => {
-    it("heatmap grid wrapper uses width: 100% not flex-centre", () => {
-        expect(statsPage).toMatch(/\.sx-heatmap-grid-wrap\s*\{[^}]*width:\s*100%/s);
-    });
-
-    it("heatmap SVG CSS uses width: 100%, not repeat(N, <px>)", () => {
-        // No fixed pixel column repeat (which caused the narrow layout).
-        expect(statsPage).not.toMatch(/grid-template-columns:\s*repeat\(\d+,\s*\d+px\)/);
-        expect(statsPage).toMatch(/\.sx-heatmap-grid\s*\{[^}]*width:\s*100%/s);
-    });
-
-    it("heatmap SVG opening tag has no inline pixel width attribute", () => {
-        // Extract just the opening SVG tag of the heatmap (up to the first >).
-        // We identify it by its class and data-testid proximity.
-        const tagStart = statsPage.indexOf('class="sx-heatmap-grid"');
-        const tagEnd = statsPage.indexOf(">", tagStart);
-        const svgOpenTag = statsPage.slice(tagStart, tagEnd);
-        // The opening tag should NOT have a width={...} binding.
-        // (child <rect> elements may still use width={HEAT_CELL} — that's fine).
-        expect(svgOpenTag).not.toMatch(/width=/);
-    });
-
-    it("heatmap panel has data-testid for e2e tests", () => {
-        expect(statsPage).toMatch(/data-testid="stats-heatmap-panel"/);
-    });
+import { expect, test } from "vitest";
+import { trend, smoothPath, streaks } from "./ui/stats/chart";
+test("forecast uses approved weighted five-day smoothing and preserves today", () => {
+  expect(trend([0, 0, 10, 0, 0, 0, 0])).toEqual([
+    0,
+    40 / 11,
+    4,
+    2.5,
+    0.625,
+    0,
+    0,
+  ]);
+});
+test("smooth path handles empty and one-point series", () => {
+  expect(smoothPath([])).toBe("");
+  expect(smoothPath([[4, 5]])).toBe("M4,5");
+});
+test("smoothing uses monotone curves through every sample", () => {
+  expect(
+    smoothPath([
+      [0, 10],
+      [10, 0],
+      [20, 10],
+    ]),
+  ).toContain("C");
+  expect(
+    smoothPath([
+      [0, 10],
+      [10, 0],
+      [20, 10],
+    ]),
+  ).toContain("10,0");
+});
+test("streak ends today and longest is computed across the available window", () => {
+  expect(streaks([1, 1, 1, 0, 1, 0])).toEqual({ days: 0, longest: 3 });
 });

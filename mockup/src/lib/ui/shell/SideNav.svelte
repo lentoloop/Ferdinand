@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { page } from "$app/stores";
   import Brand from "./Brand.svelte";
   let {
     user = "demo",
@@ -8,19 +9,47 @@
 </script>
 
 <nav class="sidenav" data-component="SideNav" aria-label="主要導覽">
-  <a class="brand" href="/" aria-label="Ferdinand，回到今日"><Brand /></a>
+  <a
+    class="brand"
+    href="/"
+    aria-label="Ferdinand，回到今日"><Brand /></a
+  >
   <ul>
     <li>
-      <a href="/"
+      <a href="/" aria-current={$page.url.pathname === "/" ? "page" : undefined}
         ><span>今日</span>{#if dueCount !== undefined}<span class="count mono"
             >{dueCount}</span
           >{/if}</a
       >
     </li>
-    <li><a href="/browse">瀏覽</a></li>
-    <li><a href="/notes/new" aria-current="page">新增筆記</a></li>
-    <li><a href="/stats">統計</a></li>
-    <li><a href="/settings">設定</a></li>
+    <li>
+      <a
+        href="/browse"
+        aria-current={$page.url.pathname === "/browse" ? "page" : undefined}
+        >瀏覽</a
+      >
+    </li>
+    <li>
+      <a
+        href="/notes/new"
+        aria-current={$page.url.pathname === "/notes/new" ? "page" : undefined}
+        >新增筆記</a
+      >
+    </li>
+    <li>
+      <a
+        href="/stats"
+        aria-current={$page.url.pathname === "/stats" ? "page" : undefined}
+        >統計</a
+      >
+    </li>
+    <li>
+      <a
+        href="/settings"
+        aria-current={$page.url.pathname === "/settings" ? "page" : undefined}
+        >設定</a
+      >
+    </li>
   </ul>
   <div class="foot">
     <p>{user}</p>

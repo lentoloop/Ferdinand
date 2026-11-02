@@ -1,8 +1,21 @@
+<script lang="ts">
+  import { page } from "$app/stores";
+</script>
+
 <nav class="tabbar" data-component="TabBar" aria-label="主要導覽">
-  <a href="/">今日</a><a href="/browse">瀏覽</a><a
+  <a href="/" aria-current={$page.url.pathname === "/" ? "page" : undefined}
+    >今日</a
+  ><a
+    href="/browse"
+    aria-current={$page.url.pathname === "/browse" ? "page" : undefined}>瀏覽</a
+  ><a
     href="/notes/new"
-    aria-current="page">新增</a
-  ><a href="/stats">統計</a>
+    aria-current={$page.url.pathname === "/notes/new" ? "page" : undefined}
+    >新增</a
+  ><a
+    href="/stats"
+    aria-current={$page.url.pathname === "/stats" ? "page" : undefined}>統計</a
+  >
 </nav>
 
 <style>
@@ -20,6 +33,16 @@
     border-top: 1px solid var(--hairline);
   }
   /* 24px page-colour fade above the TabBar, so lists run out softly instead of a hard cut (not over the SaveBand) */
+  .tabbar::before {
+    content: "";
+    position: absolute;
+    top: -25px;
+    height: 24px;
+    left: 0;
+    right: 0;
+    background: linear-gradient(transparent, var(--page));
+    pointer-events: none;
+  }
   .tabbar a {
     display: flex;
     align-items: center;
@@ -38,7 +61,7 @@
   .tabbar a[aria-current="page"]::before {
     content: "";
     position: absolute;
-    top: -1px;
+    top: 6px;
     left: 24%;
     right: 24%;
     height: 2px;

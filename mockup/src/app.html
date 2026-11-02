@@ -2,6 +2,7 @@
 <html lang="zh-TW" data-theme="light" data-sveltekit-preload-data="hover">
     <head>
         <meta charset="utf-8" />
+        <link rel="apple-touch-icon" href="%sveltekit.assets%/app-icon.png" />
         <link rel="icon" href="%sveltekit.assets%/favicon.svg" />
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
         <meta name="color-scheme" content="light dark" />
@@ -11,16 +12,10 @@
         <!-- Match the sketch-skin --bg tokens from src/styles/tokens.css so the
              mobile browser chrome (iOS Safari / Android Chrome URL bar) blends
              with the page background instead of fighting it. -->
-        <meta name="theme-color" content="oklch(90.5% 0.022 80)" media="(prefers-color-scheme: light)" />
-        <meta name="theme-color" content="oklch(15.5% 0.012 60)" media="(prefers-color-scheme: dark)" />
+        <meta name="theme-color" content="#EDE8DD" media="(prefers-color-scheme: light)" />
+        <meta name="theme-color" content="#20231F" media="(prefers-color-scheme: dark)" />
         <meta name="format-detection" content="telephone=no" />
         <title>Ferdinand</title>
-        <!-- Speed up the @import font requests fired by src/styles/typography.css
-             (Geist, JetBrains Mono, Klee One, LXGW WenKai TC, Noto Serif TC,
-             Caveat). The stylesheet itself is bundled in via the CSS @import —
-             no <link rel="stylesheet"> needed here. -->
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
         <script>
             // Apply theme before first paint to avoid flash
             (function () {

@@ -1,785 +1,103 @@
 <script lang="ts">
-    import { onMount } from "svelte";
-    import { Caption } from "$lib/components/ui";
-    import {
-        fetchStatsRecent,
-        fetchAnswerButtons,
-        fetchDecks,
-        type ApiDayCount,
-        type ApiAnswerButtons,
-        type ApiDeckSummary,
-    } from "$lib/api";
-    import { deckBreakdownRows, aggregateRetentionPct } from "$lib/stats";
-    import { computeStreak } from "$lib/study";
-
-    type Range = "1M" | "3M" | "1Y" | "ALL";
-    const RANGE_DAYS: Record<Range, number> = {
-        "1M": 30,
-        "3M": 90,
-        "1Y": 365,
-        ALL: 365,
-    };
-    const RANGE_LABEL: Record<Range, string> = {
-        "1M": "past 30 days",
-        "3M": "past 90 days",
-        "1Y": "past 365 days",
-        ALL: "all time",
-    };
-
-    let range = $state<Range>("1M");
-
-    let history = $state<ApiDayCount[] | null>(null);
-    let answerButtons = $state<ApiAnswerButtons | null>(null);
-    let decks = $state<ApiDeckSummary[] | null>(null);
-    let loadError = $state<string | null>(null);
-    let loaded = $state(false);
-
-    async function load(days: number) {
-        loadError = null;
-        try {
-            const [h, ab, d] = await Promise.all([
-                fetchStatsRecent(days),
-                fetchAnswerButtons(days),
-                fetchDecks(),
-            ]);
-            history = h.history;
-            answerButtons = ab;
-            decks = d.decks;
-        } catch (e) {
-            history = [];
-            answerButtons = { days, again: 0, hard: 0, good: 0, easy: 0 };
-            decks = [];
-            loadError = e instanceof Error ? e.message : "Couldn't load stats";
-        } finally {
-            loaded = true;
-        }
+  import {
+    capabilities,
+    fetchTrueRetention,
+    fetchDeckRetention,
+    type RetentionSummary,
+    type DeckRetentionRow,
+  } from "$lib/ui/browse/client";
+  import { onMount } from "svelte";
+  import { fetchForecast, fetchStatsRecent } from "$lib/api";
+  import { streaks } from "$lib/ui/stats/chart";
+  import RetentionCard from "$lib/ui/stats/RetentionCard.svelte";
+  import ForecastChart from "$lib/ui/stats/ForecastChart.svelte";
+  import ReviewsChart from "$lib/ui/stats/ReviewsChart.svelte";
+  import DeckRetention from "$lib/ui/stats/DeckRetention.svelte";
+  import StreakLine from "$lib/ui/stats/StreakLine.svelte";
+  let forecast = $state<number[]>([]),
+    reviews = $state<number[]>([]),
+    dates = $state<string[]>([]),
+    loading = $state(true),
+    error = $state("");
+  let retention = $state<RetentionSummary | null>(null),
+    deckRetention = $state<DeckRetentionRow[]>([]);
+  let streak = $derived(streaks(reviews));
+  let nextDates = $derived(
+    forecast.map((_, i) =>
+      new Date(Date.now() + i * 86400000).toLocaleDateString("sv-SE").slice(5),
+    ),
+  );
+  onMount(() => {
+    void load();
+  });
+  async function load() {
+    loading = true;
+    error = "";
+    try {
+      const [f, r, ret, byDeck] = await Promise.all([
+        fetchForecast(30),
+        fetchStatsRecent(30),
+        capabilities.trueRetention
+          ? fetchTrueRetention()
+          : Promise.resolve(null),
+        capabilities.deckRetention ? fetchDeckRetention() : Promise.resolve([]),
+      ]);
+      retention = ret;
+      deckRetention = byDeck;
+      forecast = f.history.map((x) => x.reviews);
+      reviews = r.history.map((x) => x.reviews);
+      dates = r.history.map((x) => x.date.slice(5));
+    } catch (e) {
+      error = e instanceof Error ? e.message : String(e);
+    } finally {
+      loading = false;
     }
-
-    onMount(() => load(RANGE_DAYS[range]));
-
-    function setRange(r: Range) {
-        range = r;
-        loaded = false;
-        load(RANGE_DAYS[r]);
-    }
-
-    let values = $derived((history ?? []).map((d) => d.reviews));
-    let totalReviews = $derived(values.reduce((a, v) => a + v, 0));
-    let maxBar = $derived(Math.max(1, ...values));
-
-    // Streak via shared $lib/study helper — DRY with /dashboard (issue #16).
-    let streak = $derived(computeStreak(history ?? []));
-
-    let bestDay = $derived(values.length === 0 ? 0 : Math.max(...values));
-
-    let answerEntries = $derived(
-        answerButtons
-            ? ([
-                  ["again", answerButtons.again],
-                  ["hard", answerButtons.hard],
-                  ["good", answerButtons.good],
-                  ["easy", answerButtons.easy],
-              ] as const)
-            : [],
-    );
-    let totalAns = $derived(answerEntries.reduce((a, [, v]) => a + v, 0));
-
-    // Aggregate review retention over the window, % — the stand-in for the
-    // design's per-day retention curve (the backend has no per-day
-    // pass-rate series). `null` ⇒ render "—" rather than a misleading 0%.
-    let retentionPct = $derived(aggregateRetentionPct(answerButtons));
-
-    // Deck breakdown table rows — leaves only, full path + a 2-char glyph
-    // + the deck's own card count. mature / retention / activity / last are
-    // not in the /api/decks payload; the table renders them as "—".
-    let deckRows = $derived(deckBreakdownRows(decks ?? []));
-
-    // Bar chart geometry — recomputed from the live history so the SVG
-    // stays viewBox-correct across range changes. We render the chart at
-    // a logical 520×140 viewBox and let CSS scale it; mobile shrinks the
-    // visible width via aspect-ratio so the bars never run off screen.
-    const CHART_W = 520;
-    const CHART_H = 140;
-    let barCount = $derived(Math.max(1, values.length));
-    let barUnit = $derived((CHART_W - 14) / barCount);
-    let bars = $derived(
-        values.map((v, i) => {
-            const x = i * barUnit + 4;
-            const h = (v / maxBar) * (CHART_H - 8);
-            return { x, h, w: Math.max(1, barUnit - 5), v };
-        }),
-    );
-
-    // Activity heatmap — calendar-style grid (columns = weeks, rows =
-    // Mon..Sun) built straight from the per-day history. Intensity is
-    // bucketed against the busiest day in the window. Matches the design's
-    // Heatmap (stats.jsx l. 74-119) but driven by real data instead of a
-    // PRNG, and the column count follows the selected range.
-    const HEAT_CELL = 15;
-    const HEAT_GAP = 3;
-    const HEAT_ROWS = 7;
-    type HeatCell = {
-        col: number;
-        row: number;
-        level: number;
-        reviews: number;
-        date: string;
-    };
-    function heatLevel(n: number, max: number): number {
-        if (n <= 0) return 0;
-        const r = n / max;
-        if (r > 0.75) return 4;
-        if (r > 0.5) return 3;
-        if (r > 0.25) return 2;
-        return 1;
-    }
-    // 0 = Monday … 6 = Sunday (ISO weekday order reads better as a grid).
-    function isoDow(iso: string): number {
-        return (new Date(`${iso}T00:00:00`).getDay() + 6) % 7;
-    }
-    let heatmap = $derived.by(() => {
-        const days = history ?? [];
-        if (days.length === 0) return { cols: 0, cells: [] as HeatCell[] };
-        const max = Math.max(1, ...days.map((d) => d.reviews));
-        const firstDow = isoDow(days[0].date);
-        const cells: HeatCell[] = days.map((d, i) => {
-            const idx = i + firstDow;
-            return {
-                col: Math.floor(idx / HEAT_ROWS),
-                row: idx % HEAT_ROWS,
-                level: heatLevel(d.reviews, max),
-                reviews: d.reviews,
-                date: d.date,
-            };
-        });
-        const cols = Math.max(...cells.map((c) => c.col)) + 1;
-        return { cols, cells };
-    });
-    let heatColors = [
-        "var(--paper)",
-        "color-mix(in oklch, var(--accent) 18%, var(--paper))",
-        "color-mix(in oklch, var(--accent) 38%, var(--paper))",
-        "color-mix(in oklch, var(--accent) 65%, var(--paper))",
-        "var(--accent)",
-    ];
+  }
 </script>
 
-<svelte:head><title>Stats — Ferdinand</title></svelte:head>
-
-<div class="sketch-skin grain page sx-page" data-testid="stats-root">
-    <header class="sx-head" data-testid="stats-head">
-        <div class="sx-head-left">
-            <Caption>the.ledger</Caption>
-            <h1 class="page-title" data-testid="stats-title">
-                statistics
-                <span class="page-title-hand" aria-hidden="true">{RANGE_LABEL[range]}</span>
-            </h1>
-            <p class="page-subtitle">all decks · snapshot of your review behavior</p>
-        </div>
-        <div class="sx-range" role="tablist" aria-label="time range" data-testid="stats-range">
-            {#each ["1M", "3M", "1Y", "ALL"] as r (r)}
-                <button
-                    type="button"
-                    role="tab"
-                    aria-selected={range === r}
-                    class="sx-range-pill mono"
-                    class:active={range === r}
-                    data-testid="stats-range-{r}"
-                    onclick={() => setRange(r as Range)}
-                >{r === "ALL" ? "all" : r}</button>
-            {/each}
-        </div>
-    </header>
-
-    {#if loadError}
-        <div class="sx-error mono" role="alert" data-testid="stats-error">
-            // couldn't reach server — {loadError}
-        </div>
-    {/if}
-
-    <section class="sx-kpi-grid" data-testid="stats-kpi-grid">
-        <article class="sx-tile" data-testid="stats-tile-reviews">
-            <Caption>reviews</Caption>
-            <div class="sx-tile-value mono">
-                {totalReviews.toLocaleString()}<span class="sx-tile-unit">in {RANGE_DAYS[range]}d</span>
-            </div>
-        </article>
-        <article class="sx-tile sx-tile-accent" data-testid="stats-tile-streak">
-            <Caption>streak</Caption>
-            <div class="sx-tile-value mono">
-                {streak}<span class="sx-tile-unit">days</span>
-            </div>
-        </article>
-        <article class="sx-tile" data-testid="stats-tile-retention">
-            <Caption>retention</Caption>
-            <div class="sx-tile-value mono">
-                {#if retentionPct === null}—{:else}{retentionPct}{/if}<span class="sx-tile-unit"
-                    >% · {RANGE_DAYS[range]}d</span
-                >
-            </div>
-        </article>
-        <article class="sx-tile" data-testid="stats-tile-best">
-            <Caption>best day</Caption>
-            <div class="sx-tile-value mono">
-                {bestDay.toLocaleString()}<span class="sx-tile-unit">cards</span>
-            </div>
-        </article>
-    </section>
-
-    <section class="sx-charts" data-testid="stats-charts">
-        <article class="sx-panel" data-testid="stats-bars-panel">
-            <header class="sx-panel-head">
-                <Caption>reviews per day</Caption>
-                <span class="sx-panel-meta mono">last {RANGE_DAYS[range]}d</span>
-            </header>
-            {#if loaded && values.length === 0}
-                <div class="sx-empty mono" data-testid="stats-bars-empty">
-                    no reviews in this window.
-                </div>
-            {:else}
-                <svg
-                    class="sx-bars"
-                    data-testid="stats-bars-svg"
-                    viewBox="0 0 {CHART_W} {CHART_H + 26}"
-                    preserveAspectRatio="none"
-                    role="img"
-                    aria-label="reviews per day"
-                >
-                    <line
-                        x1="0"
-                        y1={CHART_H}
-                        x2={CHART_W}
-                        y2={CHART_H}
-                        stroke="var(--ink)"
-                        stroke-width="1.4"
-                    />
-                    {#each [0.25, 0.5, 0.75] as p, i (i)}
-                        <line
-                            x1="0"
-                            y1={CHART_H - CHART_H * p}
-                            x2={CHART_W}
-                            y2={CHART_H - CHART_H * p}
-                            stroke="var(--rule)"
-                            stroke-width="1"
-                            stroke-dasharray="2 4"
-                        />
-                    {/each}
-                    {#each bars as b, i (i)}
-                        <rect
-                            x={b.x}
-                            y={CHART_H - b.h}
-                            width={b.w}
-                            height={b.h}
-                            rx="1"
-                            fill="var(--accent-soft)"
-                            stroke="var(--ink)"
-                            stroke-width="1"
-                            data-testid="stats-bar-{i}"
-                        />
-                    {/each}
-                    <text x="0" y={CHART_H + 18} class="sx-axis mono">{RANGE_DAYS[range]}d ago</text>
-                    <text x={CHART_W - 36} y={CHART_H + 18} class="sx-axis mono">today</text>
-                </svg>
-            {/if}
-        </article>
-
-        <article class="sx-panel" data-testid="stats-answer-panel">
-            <header class="sx-panel-head">
-                <Caption>answer mix</Caption>
-                <span class="sx-panel-meta mono">{totalAns} total</span>
-            </header>
-            {#if totalAns === 0}
-                <div class="sx-empty mono" data-testid="stats-answer-empty">
-                    no answers in this window.
-                </div>
-            {:else}
-                <div class="sx-answer-list" data-testid="stats-answer-list">
-                    {#each answerEntries as [k, v] (k)}
-                        {@const pct = (v / totalAns) * 100}
-                        <div class="sx-answer-row" data-testid="stats-answer-{k}">
-                            <div class="sx-answer-head">
-                                <span class="sx-answer-key sx-answer-key-{k} mono">{k}</span>
-                                <span class="sx-answer-meta mono">{v} · {pct.toFixed(0)}%</span>
-                            </div>
-                            <div class="sx-answer-bar">
-                                <div
-                                    class="sx-answer-fill sx-answer-fill-{k}"
-                                    style:width="{pct}%"
-                                ></div>
-                            </div>
-                        </div>
-                    {/each}
-                </div>
-            {/if}
-        </article>
-    </section>
-
-    <section class="sx-heatmap-section" data-testid="stats-heatmap">
-        <article class="sx-panel sx-heatmap-panel" data-testid="stats-heatmap-panel">
-            <header class="sx-panel-head">
-                <Caption>activity heatmap</Caption>
-                <span class="sx-panel-meta mono">last {RANGE_DAYS[range]} days</span>
-            </header>
-            {#if loaded && heatmap.cells.length === 0}
-                <div class="sx-empty mono" data-testid="stats-heatmap-empty">
-                    no activity in this window.
-                </div>
-            {:else}
-                <div class="sx-heatmap-grid-wrap">
-                    <svg
-                        class="sx-heatmap-grid"
-                        data-testid="stats-heatmap-svg"
-                        viewBox="0 0 {heatmap.cols * (HEAT_CELL + HEAT_GAP)} {HEAT_ROWS * (HEAT_CELL + HEAT_GAP)}"
-                        preserveAspectRatio="none"
-                        height={HEAT_ROWS * (HEAT_CELL + HEAT_GAP)}
-                        role="img"
-                        aria-label="daily review activity"
-                    >
-                        {#each heatmap.cells as c (c.date)}
-                            <rect
-                                x={c.col * (HEAT_CELL + HEAT_GAP)}
-                                y={c.row * (HEAT_CELL + HEAT_GAP)}
-                                width={HEAT_CELL}
-                                height={HEAT_CELL}
-                                rx="2"
-                                fill={heatColors[c.level]}
-                                stroke="var(--ink)"
-                                stroke-width="0.9"
-                                data-testid="stats-heat-{c.date}"
-                            ><title>{c.date} · {c.reviews} review{c.reviews === 1 ? "" : "s"}</title></rect>
-                        {/each}
-                    </svg>
-                </div>
-                <div class="sx-heatmap-legend mono">
-                    <span>{RANGE_DAYS[range]} days ago</span>
-                    <span class="sx-heatmap-scale">
-                        less
-                        {#each heatColors as col, i (i)}
-                            <span class="sx-heatmap-swatch" style:background={col}></span>
-                        {/each}
-                        more
-                    </span>
-                </div>
-            {/if}
-        </article>
-    </section>
-
-    <!-- Deck breakdown — mirrors design_handoff_ferdinand/source/stats.jsx
-         l. 241-288 (deck / cards / mature / retention / activity / last).
-         Only deck + cards come from /api/decks; the other four columns need
-         a per-deck stats endpoint that doesn't exist yet, so they render
-         "—". See $lib/stats.ts for the backend TODO. -->
-    <section class="sx-deck-section" data-testid="stats-deck-breakdown">
-        <article class="sx-panel">
-            <header class="sx-panel-head">
-                <Caption>deck breakdown</Caption>
-                <span class="sx-panel-meta mono"
-                    >{deckRows.length} {deckRows.length === 1 ? "deck" : "decks"}</span
-                >
-            </header>
-            {#if loaded && deckRows.length === 0}
-                <div class="sx-empty mono" data-testid="stats-deck-empty">
-                    no decks yet.
-                </div>
-            {:else}
-                <div class="sx-deck-scroll">
-                    <div class="sx-deck-table">
-                        <div class="sx-deck-row sx-deck-head mono" aria-hidden="true">
-                            <span>deck</span>
-                            <span class="sx-num">cards</span>
-                            <span class="sx-num">mature</span>
-                            <span class="sx-num">retention</span>
-                            <span>activity</span>
-                            <span class="sx-num">last</span>
-                        </div>
-                        {#each deckRows as d (d.fullName)}
-                            <div
-                                class="sx-deck-row sx-deck-data mono"
-                                data-testid="stats-deck-row"
-                                data-deck-name={d.fullName}
-                            >
-                                <div class="sx-deck-name">
-                                    <span class="sx-deck-glyph" aria-hidden="true">{d.glyph}</span>
-                                    <span class="sx-deck-label" title={d.fullName}>{d.fullName}</span>
-                                </div>
-                                <span class="sx-num">{d.cards.toLocaleString()}</span>
-                                <span class="sx-num sx-na">—</span>
-                                <span class="sx-num sx-na">—</span>
-                                <span class="sx-na">—</span>
-                                <span class="sx-num sx-na">—</span>
-                            </div>
-                        {/each}
-                    </div>
-                </div>
-                <p class="sx-deck-note mono">
-                    // mature, retention &amp; per-deck activity aren't tracked yet
-                </p>
-            {/if}
-        </article>
-    </section>
-</div>
+<svelte:head><title>統計 · Ferdinand</title></svelte:head>
+<h1>統計</h1>
+<p class="range">最近 30 天</p>
+{#if loading}<p role="status">正在載入統計…</p>{:else if error}<p role="alert">
+    {error}
+  </p>
+  <button class="secondary" onclick={load}>重試</button>{:else}<div
+    class="stats-grid"
+  >
+    <RetentionCard
+      pct={retention?.pct ?? null}
+      target={retention?.target}
+      delta={retention?.delta}
+    /><ForecastChart values={forecast} dates={nextDates} /><ReviewsChart
+      values={reviews}
+      {dates}
+    /><DeckRetention rows={deckRetention} /><StreakLine
+      days={streak.days}
+      longest={streak.longest}
+    />
+  </div>{/if}
 
 <style>
-    .sx-page {
-        max-width: 1100px;
-        margin: 0 auto;
-        padding: var(--space-8) var(--space-6) var(--space-12);
-        display: flex;
-        flex-direction: column;
-        gap: var(--space-6);
-        overflow-x: clip;
+  h1 {
+    font: 400 var(--t-h2)/var(--l-h2) var(--font-book);
+    padding-top: 16px;
+  }
+  .range {
+    font: 14px/22px var(--font-mono);
+    color: var(--secondary);
+  }
+  .stats-grid {
+    display: grid;
+    margin-top: 24px;
+  }
+  @media (min-width: 1000px) {
+    h1 {
+      padding-top: 40px;
     }
-
-    /* ============== HEADER ============== */
-    .sx-head {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-end;
-        flex-wrap: wrap;
-        gap: var(--space-4);
+    .stats-grid {
+      grid-template-columns: 1fr 1fr;
+      gap: 0 48px;
+      margin-top: 32px;
     }
-    .sx-head-left {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-    }
-
-    /* Range selector — paper pills, ink-bg + bg-fg when active. Matches
-       design_handoff_ferdinand/source/stats.jsx range strip (l. 162-171). */
-    .sx-range {
-        display: inline-flex;
-        gap: 6px;
-        padding: 0;
-    }
-    .sx-range-pill {
-        font-size: 11px;
-        padding: 6px 12px;
-        border: 1.2px solid var(--ink);
-        border-radius: 4px;
-        background: var(--paper);
-        color: var(--ink-soft);
-        letter-spacing: 0.06em;
-        text-transform: lowercase;
-        cursor: pointer;
-        transition: background-color 100ms ease, color 100ms ease;
-    }
-    .sx-range-pill:hover {
-        background: var(--bg-soft);
-    }
-    .sx-range-pill.active {
-        background: var(--ink);
-        color: var(--bg);
-    }
-    .sx-range-pill:focus-visible {
-        outline: 2px solid var(--accent);
-        outline-offset: 2px;
-    }
-
-    /* ============== ERROR BANNER ============== */
-    .sx-error {
-        padding: 10px 14px;
-        border: 1.5px solid var(--due);
-        background: color-mix(in oklch, var(--due) 10%, var(--paper));
-        color: var(--due);
-        border-radius: var(--radius-md);
-        font-size: 12px;
-    }
-
-    /* ============== KPI TILES ============== */
-    .sx-kpi-grid {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 14px;
-    }
-    .sx-tile {
-        background: var(--paper);
-        border: 1.5px solid var(--ink);
-        border-radius: var(--radius-md);
-        box-shadow: var(--shadow-stamp-md);
-        padding: 18px 20px;
-        min-width: 0;
-        overflow: hidden;
-    }
-    .sx-tile-value {
-        font-weight: 600;
-        font-size: 36px;
-        line-height: 1;
-        letter-spacing: -0.02em;
-        margin-top: 8px;
-        color: var(--ink);
-        font-variant-numeric: tabular-nums;
-        overflow-wrap: anywhere;
-    }
-    .sx-tile-accent .sx-tile-value {
-        color: var(--accent);
-    }
-    .sx-tile-unit {
-        font-size: 12px;
-        font-weight: 400;
-        color: var(--ink-mute);
-        margin-left: 8px;
-        letter-spacing: 0.02em;
-    }
-
-    /* ============== CHARTS ============== */
-    .sx-charts {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 18px;
-    }
-    .sx-heatmap-section {
-        display: block;
-    }
-    .sx-panel {
-        background: var(--paper);
-        border: 1.5px solid var(--ink);
-        border-radius: var(--radius-md);
-        box-shadow: var(--shadow-stamp-md);
-        padding: 18px 22px;
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-    }
-    .sx-heatmap-grid-wrap {
-        display: block;
-        width: 100%;
-        padding: 4px 0;
-    }
-    .sx-heatmap-grid {
-        display: block;
-        width: 100%;
-        height: auto;
-    }
-    .sx-heatmap-legend {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        font-size: 10px;
-        color: var(--ink-mute);
-        letter-spacing: 0.04em;
-    }
-    .sx-heatmap-scale {
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-    }
-    .sx-heatmap-swatch {
-        width: 11px;
-        height: 11px;
-        border-radius: 2px;
-        border: 0.9px solid var(--ink);
-        display: inline-block;
-    }
-    .sx-panel-head {
-        display: flex;
-        justify-content: space-between;
-        align-items: baseline;
-    }
-    .sx-panel-meta {
-        font-size: 11px;
-        color: var(--ink-mute);
-        letter-spacing: 0.04em;
-    }
-    .sx-empty {
-        padding: 24px 0;
-        text-align: center;
-        font-size: 12px;
-        color: var(--ink-mute);
-        letter-spacing: 0.04em;
-    }
-
-    /* Bar chart — SVG fills container width; aspect-ratio keeps the
-       138-unit drawing area visible while the 26-unit axis row is drawn
-       below it. Mobile shrinks the chart height, never the bar count. */
-    .sx-bars {
-        width: 100%;
-        height: auto;
-        display: block;
-        aspect-ratio: 520 / 166;
-    }
-    .sx-axis {
-        font-family: var(--font-mono);
-        font-size: 10px;
-        fill: var(--ink-mute);
-    }
-
-    /* ============== ANSWER MIX ============== */
-    .sx-answer-list {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-    }
-    .sx-answer-head {
-        display: flex;
-        justify-content: space-between;
-        align-items: baseline;
-        margin-bottom: 4px;
-    }
-    .sx-answer-key {
-        font-size: 12px;
-        font-weight: 500;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-    }
-    .sx-answer-key-again {
-        color: var(--due);
-    }
-    .sx-answer-key-hard {
-        color: var(--warn);
-    }
-    .sx-answer-key-good {
-        color: var(--accent);
-    }
-    .sx-answer-key-easy {
-        color: var(--easy);
-    }
-    .sx-answer-meta {
-        font-size: 11px;
-        color: var(--ink-mute);
-    }
-    .sx-answer-bar {
-        height: 10px;
-        background: var(--bg-soft);
-        border: 1px solid var(--ink);
-        border-radius: 999px;
-        overflow: hidden;
-    }
-    .sx-answer-fill {
-        height: 100%;
-        border-radius: 999px;
-    }
-    .sx-answer-fill-again {
-        background: var(--due);
-    }
-    .sx-answer-fill-hard {
-        background: var(--warn);
-    }
-    .sx-answer-fill-good {
-        background: var(--accent);
-    }
-    .sx-answer-fill-easy {
-        background: var(--easy);
-    }
-
-    /* ============== DECK BREAKDOWN ============== */
-    .sx-deck-section {
-        display: block;
-    }
-    /* The panel keeps its 1.5px ink border + stamp shadow; the table itself
-       scrolls horizontally on narrow viewports so the page never overflows
-       (the column widths are fixed-ish and would crush below ~560px). */
-    .sx-deck-scroll {
-        overflow-x: auto;
-        margin: 0 -2px;
-    }
-    .sx-deck-table {
-        min-width: 560px;
-    }
-    .sx-deck-row {
-        display: grid;
-        grid-template-columns: 1.6fr 80px 80px 80px 1.2fr 80px;
-        gap: 14px;
-        align-items: center;
-    }
-    .sx-deck-head {
-        font-size: 10px;
-        color: var(--ink-mute);
-        text-transform: uppercase;
-        letter-spacing: 0.16em;
-        padding: 8px 0;
-        border-bottom: 1px dashed var(--rule);
-    }
-    .sx-deck-data {
-        font-size: 12px;
-        padding: 12px 0;
-        border-bottom: 1px solid var(--rule-soft);
-    }
-    .sx-deck-table .sx-deck-data:last-child {
-        border-bottom: none;
-    }
-    .sx-num {
-        text-align: right;
-        font-variant-numeric: tabular-nums;
-    }
-    .sx-na {
-        color: var(--ink-mute);
-    }
-    .sx-deck-name {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        min-width: 0;
-    }
-    .sx-deck-glyph {
-        flex: none;
-        width: 26px;
-        height: 26px;
-        display: grid;
-        place-items: center;
-        border: 1.2px solid var(--ink);
-        border-radius: 3px;
-        font-size: 9px;
-        font-weight: 600;
-        background: var(--bg-soft);
-    }
-    .sx-deck-label {
-        font-weight: 500;
-        min-width: 0;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-    .sx-deck-note {
-        font-size: 11px;
-        color: var(--ink-mute);
-        letter-spacing: 0.04em;
-        margin: 4px 0 0;
-    }
-
-    /* ============== MOBILE (≤768px) ============== */
-    @media (max-width: 768px) {
-        .sx-page {
-            padding: var(--space-5) var(--space-4) var(--space-10);
-            gap: var(--space-5);
-        }
-        .sx-head {
-            align-items: flex-start;
-        }
-        .sx-head .page-title {
-            font-size: 22px;
-        }
-        .sx-head .page-title-hand {
-            font-size: 18px;
-            margin-left: 8px;
-        }
-        .sx-kpi-grid {
-            grid-template-columns: repeat(2, 1fr);
-            gap: 10px;
-        }
-        .sx-tile {
-            padding: 12px 14px;
-        }
-        .sx-tile-value {
-            font-size: 24px;
-            margin-top: 4px;
-            display: flex;
-            flex-wrap: wrap;
-            align-items: baseline;
-            column-gap: 4px;
-        }
-        .sx-tile-unit {
-            font-size: 10px;
-            margin-left: 0;
-        }
-        .sx-charts {
-            grid-template-columns: 1fr;
-            gap: 12px;
-        }
-        .sx-panel {
-            padding: 14px 16px;
-        }
-        .sx-bars {
-            aspect-ratio: 520 / 200;
-        }
-    }
+  }
 </style>

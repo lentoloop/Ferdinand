@@ -1,257 +1,127 @@
 /*
- * Phase A4-α — sketch design tokens (kraft-paper / pen-and-notebook aesthetic).
- *
- * Scoped under `.sketch-skin` so the legacy `lib/tokens.css` system on the
- * existing 6 routes stays untouched until Phase A4-γ promotes this skin to
- * `:root`. Both can coexist: a page wrapping its content in
- * `<div class="sketch-skin">…</div>` resolves all `--ink/--paper/--accent`
- * lookups via this file; everything outside falls back to lib/tokens.css.
- *
- * Color values transcribed verbatim from
- * design_handoff_ferdinand/README.md §"Design tokens".
+ * Ferdinand × Yoin shared tokens (r2; r3 adds --press). wu chose indigo #34557A (dark #97B0CE) as the default accent. Values match Yoin r3a where a token
+ * already existed there; new tokens extend the same paper/ink system.
+ * Fonts resolve locally only; no remote requests.
+ * r2: the seal and its oxblood are gone; the single accent is a swappable set
+ * keyed by html[data-accent] (palette/PALETTE.md). No attribute = indigo.
  */
+@font-face{font-family:Plex;src:local('IBM Plex Sans'),local('IBMPlexSans'),url('/fonts/plex.woff2') format('woff2');font-weight:400}
+@font-face{font-family:Plex;src:local('IBM Plex Sans Medium'),local('IBMPlexSans-Medium'),url('/fonts/plex.woff2') format('woff2');font-weight:500}
+@font-face{font-family:Book;src:local('Libre Baskerville'),local('LibreBaskerville-Regular'),url('/fonts/book.woff2') format('woff2');font-weight:400}
+@font-face{font-family:Book;src:local('Libre Baskerville Bold'),local('LibreBaskerville-Bold'),url('/fonts/book.woff2') format('woff2');font-weight:700}
+@font-face{font-family:Mono;src:local('IBM Plex Mono'),local('IBMPlexMono'),url('/fonts/mono.woff2') format('woff2')}
 
-.sketch-skin,
-.sketch-skin[data-theme="light"] {
-    --bg: oklch(90.5% 0.022 80); /* kraft cream — page background */
-    --bg-soft: oklch(88% 0.024 80); /* slightly darker section bg */
-    --bg-deep: oklch(85% 0.026 78); /* deepest, used for hero overlays */
-    --paper: oklch(94% 0.018 82); /* card / panel surface */
+:root{
+  /* colour */
+  --page:#EDE8DD;
+  --sheet:#FFFCF5;
+  --ink:#252923;
+  --secondary:#565A52;
+  --on-accent:#FAF6EC;
+  --slip:#ECE5D7;            /* backing sheet, disabled */
+  --rule:#8B887D;            /* answer separator, chart target line: 3.4:1 on sheet */
+  --rule-soft:#A9A397;       /* rating row, table head, input border */
+  --hairline:#D8D1C3;        /* list rows, nav rules */
+  --control-edge:#7A7D74;    /* input/chip/tool borders: 3.4:1 on page, 4.1:1 on sheet (WCAG 1.4.11) */
+  --sheet-wash:#FAF7EF80;
+  --ink-2:#4A4A44;           /* count lines on sheet: 8.7:1 on sheet, 7.2:1 on page */
+  --ink-3:#5C584F;           /* quiet ink actions (DeckRow 複習, 設定, FormatBar tools): 6.9:1 on sheet, 5.8:1 on page */
+  --ink-quiet:#6E6A62;       /* r3 pass 3: disabled FormatBar tool label, quieter than --ink-3 but still text: 5.3:1 on sheet */
+  --bar-ink:#847F74;        /* chart bars + deck-retention fills: 3.9:1 on sheet, 3.3:1 on page (WCAG 1.4.11) */
+  --chart-line:var(--ink);   /* forecast line, 1.5px: 14.4:1 on sheet, 12.1:1 on page */
+  --field-rule:#8F8A7E;      /* RichField writing line on the card: 3.4:1 on sheet */
+  --danger:#9B2C24;          /* armed 移除圖片 only (second press confirms) */
+  --again:#7D5443;           /* r3 redo: RatingRow 重來/Again label, a muted umber (not a red): 6.1:1 sheet, 4.9:1 on --press */
+  --deckle-line:#E2DACC;     /* 1px line under the torn foot */
+  --scrim:#25292399;         /* PrintDialog backdrop */
+  --dark-paper:#1E1D1A;      /* reference only: the dark-mode paper the --accent-dark values are checked on */
+  --field:#FBF8F1;           /* RichField / SearchBar fill: a shade under the sheet, like ruled stock */
+  --field-edge:#28241C38;    /* rgba(40,36,28,.22): field sides and top */
+  --tint:#EFEBE1;            /* paper-tint hover: toolbar tool, filter press */
+  --press:#E4DED1;           /* pressed/active fill (r3): RatingRow only since r3 pass 3 (FormatBar tools no longer fill); ink on it 11.0:1. Fill vs sheet is only 1.3:1, so a pressed rating also gets a 2px ink foot rule */
+  --fade-page:#EDE8DD00;     /* transparent page, start of the 24px fade above pinned rows */
 
-    --ink: oklch(22% 0.018 60); /* primary text + borders */
-    --ink-soft: oklch(38% 0.018 60); /* secondary text */
-    --ink-mute: oklch(52% 0.014 60); /* tertiary / metadata */
+  /* spacing */
+  --s1:4px;--s2:8px;--s3:12px;--s4:16px;--s5:24px;--s6:32px;
 
-    --rule: oklch(72% 0.024 70); /* dashed dividers */
-    --rule-soft: oklch(80% 0.022 75); /* subtle table borders */
+  /* type families */
+  --font-book:Book,'Noto Serif CJK TC','Noto Serif TC',serif;
+  --font-book-ja:Book,'Noto Serif CJK JP','Noto Serif JP',serif;
+  --font-ui:Plex,'Noto Sans CJK TC','Noto Sans TC',sans-serif;
+  --font-ui-ja:Plex,'Noto Sans CJK JP','Noto Sans JP',sans-serif;
+  --font-mono:Mono,'Noto Sans Mono CJK TC',monospace;
+  --font-figure:var(--font-book); /* display numerals: home 105, stats 89.4% and 23 天 share Book 400, lining figures */
 
-    --accent: oklch(34% 0.07 155); /* Pine Ink green */
-    --accent-soft: oklch(80% 0.05 150); /* tinted bg behind accent */
+  /* type scale: size / line-height */
+  --l-ja-ruby:2.1;           /* JA blocks that carry ruby reserve furigana room on every line */
+  --t-label:14px;--l-label:22px;
+  --t-body:16px;--l-body:26px;
+  --t-gloss:18px;--l-gloss:30px;
+  --t-sentence:20px;--l-sentence:32px;
+  --t-h3:24px;--l-h3:40px;
+  --t-h2:32px;--l-h2:44px;
+  --t-term:40px;--l-term:56px;
+  --t-display:56px;--l-display:76px;
+  --t-figure:56px;--l-figure:64px;  /* the one numeral size: 105, 89.4, 23 */
+  --t-rt:11px;--l-rt:16px;
 
-    --warn: oklch(50% 0.13 50); /* hard / warning */
-    --due: oklch(48% 0.13 32); /* again / danger */
-    --easy: oklch(56% 0.10 240); /* slate blue, kraft-friendly */
+  /* shape */
+  --r-paper:0;--r-action:2px;
+  --target:44px;--primary-h:48px;--rating-h:76px;--reveal-h:56px;
+  /* r3 pass 4b: fixed bottom bars. The bars size themselves from these, and the page reserves --bar-h (whichever bar is
+     showing; components.css switches it for the browse save bar) + safe area + --bar-clear, so nothing ends under a bar.
+     --bar-clear is also the height of the page-colour fade above the TabBar on the open card sheet. */
+  --tabbar-h:56px;           /* TabBar row, <1000px */
+  --saveband-h:61px;         /* dirty SaveBand at <1000px: 1px rule + 8 + 44 + 8 */
+  --saveband-h-wide:77px;    /* SaveBand at ≥1000px: 1px rule + 16 + 48 + 12 */
+  --bar-h:var(--tabbar-h);
+  --bar-clear:32px;          /* empty page kept above the bar at scroll end (brief floor: 16px); the fade lies only on this strip */
 
-    /* Anki flag colours — earthy recolour for kraft-paper context */
-    --flag-1: oklch(60% 0.18 22);   /* red */
-    --flag-2: oklch(72% 0.16 60);   /* orange */
-    --flag-3: oklch(58% 0.14 145);  /* green */
-    --flag-4: oklch(55% 0.15 240);  /* blue */
-    --flag-5: oklch(64% 0.16 350);  /* pink */
-    --flag-6: oklch(68% 0.14 175);  /* teal */
-    --flag-7: oklch(50% 0.18 290);  /* purple */
+  /* material (card planes only). Paths are relative to this file and to components.css,
+     both in r2/; in the app they become /paper/*.webp. */
+  --tex-paper:url('/paper/paper-card.webp');
+  --tex-size:512px;
+  /* riso halftone: same pitch as assets/riso.webp at 90px (≈4px), drawn in the current accent so it swaps with it.
+     A screen of regular dots, not noise; riso.webp itself was teal-baked and cannot follow the token. */
+  --halftone:radial-gradient(circle at 50% 50%,var(--accent) 0 1.05px,transparent 1.45px);
+  --halftone-size:4px 4px;
+  --contact:drop-shadow(0 1px 0 #25292314);
+  --deckle:polygon(0 0,100% 0,100% calc(100% - 1px),91% calc(100% - 2px),80% 100%,68% calc(100% - 2px),57% calc(100% - 1px),43% calc(100% - 3px),31% calc(100% - 1px),19% calc(100% - 2px),8% 100%,0 calc(100% - 1px));
+
+  /* focus */
+  --focus:3px solid var(--accent);--focus-offset:3px;--focus-halo:0 0 0 2px var(--on-accent);
 }
 
-:root[data-theme="dark"] .sketch-skin,
-.sketch-skin[data-theme="dark"] {
-    --bg: oklch(15.5% 0.012 60);
-    --bg-soft: oklch(18.5% 0.014 60);
-    --bg-deep: oklch(12% 0.01 60);
-    --paper: oklch(20% 0.014 62);
+/* ---------- accent sets: one attribute swaps every accent-tinted thing ----------
+   --accent: links, primary, tab/nav marker, focus ring, DoneTick, chart today, halftone dots
+   --patch-ground / --patch-wash: riso patch ground, pressed and selected fills
+   --accent-dark: the same accent for a dark paper (--dark-paper), for the later dark mode
+   --accent-press (r3 pass 4b): the pressed fill of a filled accent button (browse 儲存變更). Indigo #1F3A57 is about 32%
+     darker than #34557A in CIE L* (35 → 24); the other sets scale each channel by 0.68. --on-accent on it: indigo 10.8:1,
+     plum 10.8:1, umber 11.1:1, teal 10.5:1 (pass 4's #22405F was only about 8% darker and read as the resting fill).
+   --accent-wash (r3 pass 4): the accent at about 10% on the sheet with its hue kept, the pressed FormatBar tool chip.
+     The accent as a label on it ≥5.8:1 in every set (indigo ≈6.3:1).
+   Contrast numbers: palette/PALETTE.md. Default (no attribute) = indigo. */
+:root,[data-accent=indigo]{--accent:#34557A;--patch-ground:#DCE3EA;--patch-wash:#DCE3EA99;--accent-dark:#97B0CE;--accent-press:#1F3A57;--accent-wash:#E4E9EF}
+[data-accent=plum]{--accent:#6E4763;--patch-ground:#EADDE3;--patch-wash:#EADDE399;--accent-dark:#C9A2BC;--accent-press:#4B3043;--accent-wash:#EFE6EA}
+[data-accent=umber]{--accent:#6B4A2C;--patch-ground:#EBDFCF;--patch-wash:#EBDFCF99;--accent-dark:#C9A780;--accent-press:#49321E;--accent-wash:#EFE8DF}
+[data-accent=teal]{--accent:#245F5A;--patch-ground:#D8E6DF;--patch-wash:#D8E6DF99;--accent-dark:#7FB5AC;--accent-press:#18413D;--accent-wash:#E3ECE8}  /* r1 reference */
+/* The app sets data-accent on <html> (app.js, ?accent=). --focus and --halftone use var(--accent) on :root, the same
+   element, so they resolve per set there. The bare attribute selector also lets logo-compare.html preview a set on a row
+   (only --accent and --patch-ground are read there). */
 
-    --ink: oklch(92% 0.012 78);
-    --ink-soft: oklch(72% 0.012 70);
-    --ink-mute: oklch(55% 0.012 70);
-
-    --rule: oklch(34% 0.014 62);
-    --rule-soft: oklch(26% 0.012 62);
-
-    --accent: oklch(74% 0.1 152); /* lighter Pine in dark mode */
-    --accent-soft: oklch(28% 0.05 150);
-
-    --warn: oklch(75% 0.13 60);
-    --due: oklch(72% 0.16 30);
-    --easy: oklch(70% 0.12 240);
-}
-
-/* Auto dark via OS preference when the user hasn't pinned a theme. */
-@media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) .sketch-skin:not([data-theme="light"]) {
-        --bg: oklch(15.5% 0.012 60);
-        --bg-soft: oklch(18.5% 0.014 60);
-        --bg-deep: oklch(12% 0.01 60);
-        --paper: oklch(20% 0.014 62);
-        --ink: oklch(92% 0.012 78);
-        --ink-soft: oklch(72% 0.012 70);
-        --ink-mute: oklch(55% 0.012 70);
-        --rule: oklch(34% 0.014 62);
-        --rule-soft: oklch(26% 0.012 62);
-        --accent: oklch(74% 0.1 152);
-        --accent-soft: oklch(28% 0.05 150);
-        --warn: oklch(75% 0.13 60);
-        --due: oklch(72% 0.16 30);
-        --easy: oklch(70% 0.12 240);
-    }
+@media (min-width:1000px){
+  :root{--t-term:56px;--l-term:76px;--t-rt:12px;--l-rt:18px;--t-figure:72px;--l-figure:80px}
 }
 
-/* Typography, shadow, radius, spacing — shared across themes.
-   Hung off `:where(.sketch-skin)` so specificity stays at 0 and downstream
-   component styles don't have to fight a 0-1-0 selector to override. */
-:where(.sketch-skin) {
-    --font-sans: "Geist", ui-sans-serif, system-ui, -apple-system,
-        "Segoe UI", "Noto Sans TC", sans-serif;
-    --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo,
-        monospace;
-    --font-cjk: "Klee One", "LXGW WenKai TC", "Noto Serif TC", ui-serif,
-        serif;
-    --font-hand: "Caveat", "Klee One", cursive;
+@font-face{font-family:'Noto Sans CJK TC';src:local('Noto Sans CJK TC'),url('/fonts/noto-sans-tc.woff2') format('woff2');font-weight:400 700;font-display:swap}
 
-    /* Stamp shadows — pure offset, no blur. */
-    --shadow-stamp-sm: 2px 2px 0 var(--ink);
-    --shadow-stamp-md: 3px 3px 0 var(--ink);
-    --shadow-stamp-lg: 5px 5px 0 var(--ink);
-    --shadow-stamp-xl: 8px 8px 0 var(--ink);
+@font-face{font-family:'Noto Sans CJK JP';src:local('Noto Sans CJK JP'),url('/fonts/noto-sans-jp.woff2') format('woff2');font-weight:400 700;font-display:swap}
 
-    /* Radii — never above 8px per spec. */
-    --radius: 4px;
-    --radius-md: 6px;
-    --radius-lg: 8px;
-    --radius-pill: 999px;
+@font-face{font-family:'Noto Serif CJK TC';src:local('Noto Serif CJK TC'),url('/fonts/noto-serif-tc.woff2') format('woff2');font-weight:400 700;font-display:swap}
 
-    /* Spacing scale — README values verbatim. */
-    --space-1: 4px;
-    --space-2: 6px;
-    --space-3: 8px;
-    --space-4: 10px;
-    --space-5: 12px;
-    --space-6: 14px;
-    --space-7: 18px;
-    --space-8: 22px;
-    --space-9: 28px;
-    --space-10: 32px;
-    --space-12: 48px;
+@font-face{font-family:'Noto Serif CJK JP';src:local('Noto Serif CJK JP'),url('/fonts/noto-serif-jp.woff2') format('woff2');font-weight:400 700;font-display:swap}
 
-    /* Borders. */
-    --border-w: 1.5px;
-    --border-w-thin: 1.2px;
-}
-
-/* Skin-wide page chrome: paper background, ink text, base font. */
-.sketch-skin {
-    background: var(--bg);
-    color: var(--ink);
-    font-family: var(--font-sans);
-    font-feature-settings: "ss01", "cv02";
-}
-
-/* Subtle paper-grain noise overlay — README §"Aesthetic direction" calls for
-   ~3.5% opacity. Implemented as a stack of repeating gradients to avoid an
-   external image. Decorative only; pointer-events:none keeps it clickable. */
-.sketch-skin.grain {
-    position: relative;
-}
-.sketch-skin.grain::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    z-index: 0;
-    opacity: 0.035;
-    background-image:
-        radial-gradient(
-            circle at 25% 30%,
-            var(--ink) 0.5px,
-            transparent 1px
-        ),
-        radial-gradient(
-            circle at 75% 70%,
-            var(--ink) 0.5px,
-            transparent 1px
-        ),
-        radial-gradient(
-            circle at 50% 50%,
-            var(--ink) 0.4px,
-            transparent 0.8px
-        );
-    background-size: 9px 9px, 11px 11px, 7px 7px;
-    background-position: 0 0, 3px 5px, 1px 2px;
-}
-.sketch-skin.grain > * {
-    position: relative;
-    z-index: 1;
-}
-
-/* Hand-drawn SVG icon defaults — `class="sketch"` markers in sketches.jsx
-   resolve here to the 1.6px rounded-cap stroke per spec. */
-.sketch-skin .sketch {
-    color: currentColor;
-    display: inline-block;
-}
-.sketch-skin .sketch path,
-.sketch-skin .sketch circle,
-.sketch-skin .sketch rect,
-.sketch-skin .sketch polyline,
-.sketch-skin .sketch line {
-    stroke: currentColor;
-    stroke-width: 1.6;
-    fill: none;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-    vector-effect: non-scaling-stroke;
-}
-.sketch-skin .sketch .thick {
-    stroke-width: 2.2;
-}
-.sketch-skin .sketch .thin {
-    stroke-width: 1;
-}
-.sketch-skin .sketch .fill-paper {
-    fill: var(--paper);
-}
-.sketch-skin .sketch .fill-accent-soft {
-    fill: var(--accent-soft);
-}
-
-/* Hand annotation — Caveat for the rare margin scribble. */
-.sketch-skin .hand {
-    font-family: var(--font-hand);
-    line-height: 1.1;
-}
-
-/* Mono utility — captions, button labels, metadata all share these knobs. */
-.sketch-skin .mono {
-    font-family: var(--font-mono);
-    font-feature-settings: "ss02", "zero", "cv01";
-}
-
-/* CJK content slot — front/back fields, deck names, notes apply this. */
-.sketch-skin .cjk {
-    font-family: var(--font-cjk);
-}
-
-/* Page header — the big mono title + cursive companion + subtitle block at the
-   top of every route. One definition; routes override only font-size where the
-   design genuinely differs (dashboard hero = 38px, settings panel h2 = 26px,
-   narrow mobile = smaller). */
-.sketch-skin .page-title {
-    font-family: var(--font-mono);
-    font-feature-settings: "ss02", "zero", "cv01";
-    font-size: 28px;
-    font-weight: 600;
-    letter-spacing: -0.02em;
-    line-height: 1.1;
-    color: var(--ink);
-    margin: 0;
-}
-.sketch-skin .page-title-hand {
-    font-family: var(--font-hand);
-    color: var(--accent);
-    font-size: 22px;
-    line-height: 1.1;
-    letter-spacing: 0;
-    text-transform: lowercase;
-    margin-left: 12px;
-}
-.sketch-skin .page-subtitle {
-    font-size: 12px;
-    color: var(--ink-mute);
-    letter-spacing: 0.04em;
-    line-height: 1.5;
-    margin: 4px 0 0;
-}
-
-/* M7 — prevent horizontal overflow on all sketch-skin page wrappers.
-   Shared here so per-route duplicates can be removed. */
-.sketch-skin .page {
-    overflow-x: clip;
-}
+/* Aliases keep the existing new-note, settings, and login layouts on r3 tokens. */
+:root,.sketch-skin {--bg:var(--page);--bg-soft:var(--slip);--paper:var(--sheet);--text:var(--ink);--text-muted:var(--secondary);--text-subtle:var(--secondary);--ink-soft:var(--secondary);--ink-mute:var(--secondary);--accent-soft:var(--patch-ground);--font-sans:var(--font-ui);--font-serif:var(--font-book);--font-cjk:var(--font-book);--font-hand:var(--font-ui);--border-w:1px;--radius:var(--r-action);--radius-md:var(--r-action);--radius-pill:var(--r-action);--shadow-stamp-sm:none;--shadow-stamp-md:none;--space-2:8px;--space-3:12px;--space-4:16px;--space-5:20px;--space-6:24px;--space-8:32px;--space-10:40px;--space-12:48px;--safe-bottom:env(safe-area-inset-bottom,0px);--safe-top:env(safe-area-inset-top,0px);--duration-base:200ms;--ease:ease;}
+@media(min-width:1000px){:root{--bar-h:0px}}

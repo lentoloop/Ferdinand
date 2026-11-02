@@ -21,3 +21,9 @@ Object.defineProperty(window, "matchMedia", {
         dispatchEvent: vi.fn(),
     })),
 });
+
+class TestResizeObserver { observe() {} unobserve() {} disconnect() {} }
+vi.stubGlobal("ResizeObserver", TestResizeObserver);
+// jsdom has the dialog element but omits its browser methods.
+HTMLDialogElement.prototype.showModal = function () { this.setAttribute('open', ''); };
+HTMLDialogElement.prototype.close = function () { this.removeAttribute('open'); };

@@ -140,7 +140,7 @@
                 <Field
                     label="Username"
                     bind:value={username}
-                    placeholder="ktwu"
+                    placeholder="demo"
                     autocomplete="username"
                     name="username"
                     id="login-username"

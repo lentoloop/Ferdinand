@@ -1,0 +1,52 @@
+/* ---------- base ---------- */
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--page);color:var(--ink);font:400 var(--t-body)/var(--l-body) var(--font-ui)}
+h1,h2,h3,p,figure,ul,ol,dl,dd{margin:0;padding:0}
+ul,ol{list-style:none}
+[lang=ja]{font-family:var(--font-ui-ja)}
+a{color:var(--accent);text-underline-offset:4px;text-decoration-thickness:1px}
+a:hover{text-decoration-thickness:2px}
+a:active{background:var(--patch-ground)}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;background:none;border:0;border-radius:0;padding:0}
+:where(a,button,input,select,textarea,summary,[contenteditable],[tabindex]):focus-visible{outline:var(--focus);outline-offset:var(--focus-offset);box-shadow:var(--focus-halo)}
+.mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.label{font-size:var(--t-label);line-height:var(--l-label);color:var(--secondary);font-weight:400}
+.hint{font-size:var(--t-label);line-height:var(--l-label);color:var(--secondary)}
+.vh{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+rt{font-size:var(--t-rt);line-height:var(--l-rt);font-weight:400}
+mark{background:none;color:inherit;text-decoration:underline;text-decoration-color:var(--accent);text-decoration-thickness:1px;text-underline-offset:3px}
+/* a JA target chunk never breaks inside itself (気がす / る) */
+[lang=ja] mark,mark[lang=ja]{white-space:nowrap;word-break:keep-all}
+
+/* buttons */
+.primary{display:flex;align-items:center;justify-content:center;min-height:var(--primary-h);padding:12px 18px;width:100%;border-radius:var(--r-action);background:var(--accent);color:var(--on-accent);font:500 16px/24px var(--font-ui);text-decoration:none}
+.primary:not(:disabled):hover{text-decoration:underline}
+.primary:not(:disabled):active{background:var(--patch-ground);color:var(--ink)}
+/* disabled: unfilled with a solid edge (r3: the dashed perforation read as a placeholder); --control-edge 4.1:1 sheet /
+   3.4:1 page, label --ink-3 */
+.primary:disabled{background:transparent;border:1px solid var(--control-edge);color:var(--ink-3);cursor:not-allowed}
+.secondary{display:inline-flex;align-items:center;justify-content:center;min-height:var(--primary-h);padding:12px 18px;border:1px solid var(--accent);border-radius:var(--r-action);color:var(--accent);font:500 16px/24px var(--font-ui);text-decoration:none;background:transparent}
+.secondary:hover{text-decoration:underline}
+.secondary:active{background:var(--patch-ground)}
+.textlink{display:inline-flex;align-items:center;min-height:var(--target);color:var(--accent);text-decoration:underline;font-size:16px}
+
+/* ---------- material: paper planes (event cards and ledger sheets) ---------- */
+.paper{position:relative;isolation:isolate;min-width:0}
+.paper::before,.paper::after{content:'';position:absolute;inset:0;z-index:-2;pointer-events:none;clip-path:var(--deckle)}
+.paper::before{background:var(--slip);transform:translateY(2px);filter:var(--contact)}
+.paper::after{z-index:-1;background-color:var(--sheet);background-image:linear-gradient(var(--sheet-wash),var(--sheet-wash)),var(--tex-paper);background-size:var(--tex-size) var(--tex-size);border-bottom:1px solid var(--deckle-line)}
+/* the one riso patch per screen: accent halftone dots on the patch ground, softened by the wash; all three follow data-accent */
+.patch{position:relative;display:inline-block;isolation:isolate}
+.patch::after{content:'';position:absolute;z-index:-1;left:-3px;width:calc(100% + 6px);height:12px;bottom:10px;background-color:var(--patch-ground);background-image:linear-gradient(var(--patch-wash),var(--patch-wash)),var(--halftone);background-size:auto,var(--halftone-size);transform:rotate(-1.5deg)}
+
+
+/* ---------- display figures: home 105, stats 89.4 and 23 share one face, size and weight ---------- */
+.figure{font:400 var(--t-figure)/var(--l-figure) var(--font-figure);font-variant-numeric:lining-nums tabular-nums;color:var(--ink)}
+.figure .patch::after{height:16px;bottom:10px}
+.figure .unit{font:400 18px/26px var(--font-ui);color:var(--secondary);margin-left:8px}
+
+
+html,body{background:var(--page);color:var(--ink);font-family:var(--font-ui)}
+[lang=ja]:has(ruby){line-height:var(--l-ja-ruby)}
