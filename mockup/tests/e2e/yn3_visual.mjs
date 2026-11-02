@@ -22,9 +22,13 @@ try {
       "loading",
       "importing",
       "done",
+      "done-partial",
+      "server-error",
+      "empty",
+      "preview-v2",
     ]) {
-      await page.goto(`http://localhost:5174/import?state=${state}`);
-      await page.waitForSelector(`[data-state="${state}"]`);
+      await page.goto(`http://localhost:5174/import?state=${state === "preview-v2" ? "preview&fields=v2" : state}`);
+      await page.waitForSelector(`[data-state="${state === "preview-v2" ? "preview" : state}"]`);
       await page.evaluate(() => document.fonts.ready);
       await page.screenshot({
         path: path.join(out, `import--${state}--${width}.png`),
@@ -36,4 +40,4 @@ try {
 } finally {
   await browser.close();
 }
-console.log(`14 screenshots: ${out}`);
+console.log(`22 screenshots: ${out}`);

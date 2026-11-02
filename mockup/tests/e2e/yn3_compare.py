@@ -4,7 +4,7 @@ import os
 shots = Path(os.environ.get('YN3_SHOTS', 'tests/e2e/artifacts/yn3-ui'))
 reference = Path('/workspace/design/ferdinand/import/shots')
 for width in (390, 1440):
-    for state in ('preview','all-new','errors','over-limit','loading','importing','done'):
+    for state in ('preview','all-new','errors','over-limit','loading','importing','done','done-partial','server-error','empty','preview-v2'):
         name = f'import--{state}--{width}.png'
         a = Image.open(reference/name).convert('RGB')
         a = a.resize((width, round(a.height*width/a.width)))
@@ -13,4 +13,4 @@ for width in (390, 1440):
         ImageDraw.Draw(canvas).text((8,8), 'Approved reference (left) / Svelte (right)', fill='black')
         canvas.paste(a,(0,28)); canvas.paste(b,(width,28))
         canvas.save(shots/f'compare--{state}--{width}.png')
-print('14 side-by-side comparisons written')
+print('22 side-by-side comparisons written')

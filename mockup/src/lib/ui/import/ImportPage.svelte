@@ -37,7 +37,7 @@
   } = $props();
   let newRows = $derived(
     response.results.filter(
-      (r) => r.status === (view === "done" ? "created" : "would_create"),
+      (r) => view === "importing" && !response.dry_run ? r.status === "error" && r.error === "unable to create note" : r.status === ((view === "done" || view === "done-partial") ? "created" : "would_create"),
     ),
   );
   let skipped = $derived(
@@ -65,10 +65,11 @@
 <AppShell state={view} {user} {dueCount} {onlogout}>
   <ImportHeader
     title={view === "empty" ? "從 Yoin 匯入" : "匯入預覽"}
-    lede={view === "empty" || view === "server-error"
+    lede={view === "empty"
       ? ""
-      : view === "done"
-        ? "這一批已經寫入 Ferdinand。"
+      : view === "server-error" ? (error?.unconfirmed ? "匯入時沒有收到 Ferdinand 的結果。" : "這一批沒有寫入 Ferdinand。")
+      : (view === "done" || view === "done-partial")
+        ? (view === "done-partial" ? "這一批大部分已經寫入 Ferdinand。" : "這一批已經寫入 Ferdinand。")
         : view === "importing"
           ? "正在把卡片寫入 Ferdinand。"
           : view === "errors"
@@ -79,10 +80,12 @@
   />
   {#if view === "empty" || view === "server-error"}<ImportState
       {error}
+      total={items.length}
       {onretry}
     />
+    {#if view === "server-error"}<div class="paper imp-ledger"><ImportList title="這一批" {items} results={items.map((_, index) => ({index, status: error?.unconfirmed ? "unknown" : "unsent"}))} /></div>{/if}
   {:else}
-    <ImportSummary {reviewDeck} {response} total={items.length} {view} />
+    <ImportSummary {onretry} {reviewDeck} {response} total={items.length} {view} />
     <div class="paper imp-ledger" data-component="ImportList" aria-busy={busy}>
       {#if view === "over-limit"}
         <ImportList
@@ -105,15 +108,16 @@
       {:else if view === "importing"}<ImportList
           title="匯入中"
           {items}
-          results={newRows}
+          results={newRows.map(r => ({...r, status: "would_create"}))}
         />{#if skipped.length}<ImportList
             title="不會匯入"
             {items}
             results={skipped}
           />{/if}
-      {:else if view === "done"}
+      {:else if (view === "done" || view === "done-partial")}
         {#if skipped.length}<ImportList
             title="沒有匯入"
+            note={view === "done-partial" ? "重試只會重送沒寫入的卡片。" : "錯誤的卡片：切換回 Yoin 修正，再重送。"}
             {items}
             results={skipped}
           />{/if}
@@ -122,7 +126,7 @@
           aria-expanded={expanded}
           onclick={() => (expanded = !expanded)}
           >已匯入的 {newRows.length} 張
-          <span>{expanded ? "收合" : "展開"}</span></button
+          <span>{expanded ? "收合" : "展開"} <span aria-hidden="true">{expanded ? "−" : "+"}</span></span></button
         >
         {#if expanded}<ImportList
             title="已匯入"
@@ -150,7 +154,7 @@
         />
       {/if}
     </div>
-    {#if view !== "done"}<ImportDock
+    {#if view !== "done" && view !== "done-partial"}<ImportDock
         hint={view === "importing"
           ? "請先別關閉這一頁。"
           : view === "loading"
@@ -175,7 +179,7 @@
       />{/if}
   {/if}
   <p class="vh" role="status" aria-live="polite">
-    {view === "done"
+    {(view === "done" || view === "done-partial")
       ? `匯入完成：${newRows.length} 張已加入 Ferdinand。`
       : view === "preview" || view === "all-new" || view === "errors"
         ? `檢查完成：${newRows.length} 張會匯入。`
@@ -197,7 +201,7 @@
   }
   .disclose span {
     font-weight: 400;
-    color: var(--secondary);
+    color: var(--accent);
   }
 
   .imp-ledger {

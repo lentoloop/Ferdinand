@@ -1,8 +1,10 @@
 <script lang="ts">
   let {
     error,
+    total = 0,
     onretry,
   }: {
+    total?: number;
     error?: { status: number; unconfirmed: boolean; message: string };
     onretry: () => void;
   } = $props();
@@ -11,32 +13,33 @@
 <article
   class="paper state-card imp-state"
   data-component="ImportState"
-  data-pending-design="Mia"
   data-variant={error ? "error" : "nothing"}
   role={error ? "alert" : "status"}
 >
   {#if error}<h2 class="state-title">
       {error.unconfirmed
-        ? "匯入結果未確認。"
+        ? "尚未確認匯入結果"
         : error.status === 401
           ? "請先登入 Ferdinand。"
           : "無法完成這次匯入。"}
     </h2>
     <p class="state-body">
       {error.unconfirmed
-        ? "沒有收到結果，部分卡片可能已寫入。重試是安全的，不會重複建立。"
-        : error.message}
+        ? "匯入時等太久，Ferdinand 沒有回傳結果。這一批可能已經寫入一部分卡片，也可能已經建立了新牌組。"
+        : `沒有寫入任何卡片。${error.message}`}
     </p>
-    <button class="primary" onclick={onretry}
+    <p class="query">{error.status ? `HTTP ${error.status}` : "逾時"}</p>
+    {#if error.unconfirmed}<p class="state-body imp-kept">「重試」很安全：會先重新檢查，已經寫入的卡片會顯示為「已有」，不會重複建立。這 {total} 張 Yoin 都還保留著，還沒標成已送出。</p>{/if}
+    <div class="state-actions"><button class="primary" onclick={onretry}
       >{error.status === 401 ? "登入" : "重試"}</button
-    >{:else}<h2 class="state-title">Yoin 沒有送來任何卡片。</h2>
+    ></div>{:else}<h2 class="state-title">Yoin 沒有送來任何卡片。</h2>
     <h3 class="imp-steps-h">從 Yoin 送卡片過來</h3>
     <ol class="imp-steps">
       <li>在 Yoin 暫存勾選卡片。</li>
       <li>按「送到 Ferdinand」。</li>
       <li>這裡會出現預覽，確認後才匯入。</li>
     </ol>
-    <p class="imp-steps-note">一次可以送 1 到 100 張。請切換回 Yoin。</p>{/if}
+    <p class="imp-steps-note">一次可以送 1 到 100 張。</p><p class="state-body">請切換回 Yoin，勾選卡片後按「送到 Ferdinand」。</p>{/if}
 </article>
 
 <style>
