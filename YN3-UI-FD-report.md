@@ -29,10 +29,9 @@ The e2e starts a temporary server and demo account. It proves that dry-run creat
 
 Screenshots and comparisons are in `/workspace/repos/ferdinand/.worktrees/yn3-ui/mockup/tests/e2e/artifacts/yn3-ui/`: `import--<state>--{390,1440}.png` and `compare--<state>--{390,1440}.png`. The sandbox cannot write to the requested `/workspace/eng/shots/yn3-ui/`. These artifacts remain local and are not committed.
 
-Known gaps and design holds:
+Contract-v1 follow-up:
 
-- Server-error and empty are **pending Mia revision**. Their behavior and tests exist, but final screenshots are deliberately absent.
-- Repeat wording, deck badges, and done counts remain minimal in `RepeatReason`, `DeckBadge`, and `DoneCounts`. They are **pending Mia revision**. Hidden metadata badges shorten summaries relative to references that show fallback lines. Done summary text also differs intentionally. Pixel identity is not claimed for these held elements.
+- The previously held server-error, empty, repeat, deck, and completion elements are implemented and verified in `YN3-REV-FD-report.md`.
 - CJK WOFF2 subsets cover interface and fixture characters. Other glyphs use the platform font fallback.
 - Production needs `PUBLIC_YOIN_ORIGINS` configured with exact allowed Yoin origins. The default is empty. Development additionally allows `http://localhost:5173`.
 

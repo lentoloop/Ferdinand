@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { ImportItem, ItemResult } from "./model";
-  import { status, errorText, errorAction, firstIndex } from "./model";
+  import { status, errorText, errorAction, firstIndex, fieldError } from "./model";
   import RepeatReason from "./RepeatReason.svelte";
   let {
     item,
@@ -15,7 +15,7 @@
     index?: number;
     uniform?: boolean;
   } = $props();
-  let st = $derived(status(result.status));
+  let st = $derived(result.status === "duplicate" && result.first_index !== undefined ? {shape: "repeat", word: "重複略過"} : status(result.status));
   let credit = $derived(
     [
       {
@@ -51,7 +51,7 @@
   </div>
   <p class="imp-src mono" title={credit}>{credit}</p>
   {#if !uniform}<p class="imp-st" data-st={st.shape}>
-      <span class="st-mark" data-st={st.shape} aria-hidden="true"></span><span
+      {#if result.status !== "unknown" && result.status !== "unsent"}<span class="st-mark" data-st={st.shape} aria-hidden="true"></span>{/if}<span
         >{st.word}</span
       >{#if result.status === "pending"}<span class="skel" aria-hidden="true"></span>{/if}{#if result.status === "duplicate" && result.note_id && firstIndex(items, result) === undefined}<a
           class="textlink imp-st-link"
@@ -60,9 +60,7 @@
         >{/if}
     </p>{/if}
   {#if result.status === "error"}<p class="imp-why">
-      <span class="imp-why-zh">{errorText(result.error)}。</span>{errorAction(
-        result.error,
-      )}
+      <span class="imp-why-zh">{fieldError(result)?.reason ?? errorText(result.error)}。</span>{fieldError(result)?.action ?? errorAction(result.error)}
     </p>
   {:else if result.status === "would_duplicate" || (result.status === "duplicate" && firstIndex(items, result) !== undefined)}<p
       class="imp-why"
@@ -102,10 +100,10 @@
     font-family: var(--font-book-ja);
   }
   .imp-reading {
-    margin-left: 10px;
+    display: block;
     font: 400 14px/22px var(--font-ui);
     color: var(--secondary);
-    white-space: nowrap;
+    overflow-wrap: anywhere;
   }
   .imp-mean {
     font-size: 14px;

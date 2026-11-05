@@ -26,7 +26,9 @@ export type ResultStatus =
   | "error"
   | "pending"
   | "batch"
-  | "held";
+  | "held"
+  | "unknown"
+  | "unsent";
 export interface ItemResult {
   index: number;
   status: ResultStatus;
@@ -55,6 +57,7 @@ export type View =
   | "errors"
   | "over-limit"
   | "importing"
+  | "done-partial"
   | "done"
   | "server-error";
 export const views: View[] = [
@@ -66,6 +69,7 @@ export const views: View[] = [
   "over-limit",
   "importing",
   "done",
+  "done-partial",
   "server-error",
 ];
 export function isView(value: string | null): value is View {
@@ -80,6 +84,8 @@ export function status(key: ResultStatus) {
     error: { shape: "error", word: "錯誤" },
     pending: { shape: "pending", word: "檢查中" },
     batch: { shape: "batch", word: "這一批" },
+    unknown: { shape: "unsent", word: "結果未確認" },
+    unsent: { shape: "unsent", word: "未匯入" },
     held: { shape: "held", word: "留在 Yoin" },
   }[key];
 }
@@ -105,11 +111,7 @@ export function firstIndex(
   items: ImportItem[],
   result: ItemResult,
 ): number | undefined {
-  if (result.first_index !== undefined) return result.first_index;
-  const item = items[result.index];
-  if (!item) return undefined;
-  const index = items.findIndex((other) => other.id === item.id);
-  return index < result.index ? index : undefined;
+  return result.first_index;
 }
 function record(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -244,4 +246,16 @@ export function errorAction(error?: string): string {
   if (error === "invalid source or unapproved HTTPS link")
     return "切換回 Yoin 檢查來源連結，再重送。";
   return "切換回 Yoin 修正這張，再重送。";
+}
+
+export function fieldError(result: ItemResult): {reason: string; action: string} | undefined {
+  const labels: Record<string, string> = {chunk: "語塊", sentence: "例句", example: "例句", reading: "讀音", meaning_zh: "中文意思", meaning_target: "原文解釋", "source.jump_url": "來源連結", "source.source_title": "來源名稱"};
+  const field = result.error_field && labels[result.error_field];
+  if (result.error_code === "unapproved_url") return {reason: "來源連結不是允許的 HTTPS 連結", action: "切換回 Yoin 換掉或拿掉這個連結，再重送。"};
+  if (!field) return;
+  switch (result.error_code) {
+    case "text_missing": return {reason: `${field}是空的`, action: `切換回 Yoin 補上${field}，再重送。`};
+    case "text_too_long": return {reason: `${field}太長`, action: `切換回 Yoin 縮短${field}，再重送。`};
+    case "text_invalid": return {reason: `${field}的格式不對`, action: `切換回 Yoin 修正${field}，再重送。`};
+  }
 }

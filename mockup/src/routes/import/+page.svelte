@@ -42,8 +42,11 @@
         handoff.origin,
       );
   }
-  async function run(dryRun: boolean) {
+  async function run(dryRun: boolean, retryOnly = false) {
     if (active || !items.length || items.length > 100) return;
+    const indices = retryOnly ? response.results.filter(r => r.status === "error" && r.error === "unable to create note").map(r => r.index) : items.map((_, index) => index);
+    const requestItems = indices.map(index => items[index]);
+    if (!requestItems.length) return;
     active = true;
     error = undefined;
     view = dryRun ? "loading" : "importing";
@@ -59,12 +62,13 @@
     controller = new AbortController();
     const timeout = setTimeout(() => controller?.abort(), 30000);
     let status = 0;
+    let unconfirmed = !dryRun;
     try {
       const result = await fetch("/api/import/yoin", {
         method: "POST",
         credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items, dry_run: dryRun }),
+        body: JSON.stringify({ items: requestItems, dry_run: dryRun }),
         signal: controller.signal,
       });
       status = result.status;
@@ -77,12 +81,24 @@
           typeof body.message === "string"
             ? body.message
             : "匯入要求無法完成。";
+        if ([400, 401, 403].includes(status) || (status === 503 && message.startsWith("collection not ready:"))) unconfirmed = false;
         throw new Error(batchErrorText(status, message));
       }
-      if (!isResponse(body, items.length) || body.dry_run !== dryRun)
+      if (!isResponse(body, requestItems.length) || body.dry_run !== dryRun)
         throw new Error("伺服器回傳的結果格式不對。");
       if (disposed) return;
-      response = body;
+      response = retryOnly ? {
+        ...body,
+        decks: response.decks ? response.decks.map(previous => {
+          const current = body.decks?.find(deck => deck.name === previous.name);
+          return current ? {...current, exists: previous.exists, created: previous.created || current.created} : previous;
+        }) : body.decks,
+        results: response.results.map(previous => {
+          const localIndex = indices.indexOf(previous.index);
+          const result = body.results.find(r => r.index === localIndex);
+          return result ? { ...result, index: previous.index, first_index: result.first_index === undefined ? undefined : indices[result.first_index] } : previous;
+        }),
+      } : body;
       if (dryRun)
         view = body.results.every((r) => r.status === "would_create")
           ? "all-new"
@@ -94,8 +110,8 @@
             ? "errors"
             : "preview";
       else {
-        view = "done";
-        notify({ type: "ferdinand:result", response: body });
+        view = response.results.some(r => r.error === "unable to create note") ? "done-partial" : "done";
+        notify({ type: "ferdinand:result", response: $state.snapshot(response) });
         const target = body.results.find((r) => r.status === "created")?.deck;
         if (target)
           void fetchDecks()
@@ -119,7 +135,7 @@
       if (disposed) return;
       error = {
         status,
-        unconfirmed: status === 0 || status >= 500 || status === 200,
+        unconfirmed,
         message: cause instanceof Error ? cause.message : "匯入要求無法完成。",
       };
       view = "server-error";
@@ -135,7 +151,7 @@
   }
   let cancelled = false;
   function cancel() {
-    if (cancelled || view === "done" || !handoff) return;
+    if (cancelled || view === "done" || view === "done-partial" || !handoff) return;
     cancelled = true;
     notify(
       view === "importing"
@@ -179,7 +195,7 @@
           const { importFixtures, overLimit } =
             await import("$lib/ui/import/fixtures.js");
           const batch =
-            state === "all-new"
+            (state === "all-new" || state === "done-partial")
               ? importFixtures.allNew
               : state === "errors"
                 ? importFixtures.errors
@@ -192,11 +208,16 @@
                 : batch.items;
           // Design fixtures are static development data, parsed through the response boundary.
           const fixture: unknown = {
-            dry_run: state !== "done",
-            results: batch.results.map((r) => ({
+            dry_run: state !== "done" && state !== "done-partial",
+            decks: new URLSearchParams(location.search).get("fields") === "v2" ? batch.decks : undefined,
+            results: batch.results.map((r, index) => ({
               ...r,
+              first_index: new URLSearchParams(location.search).get("fields") === "v2" ? r.first_index : undefined,
+              error_code: new URLSearchParams(location.search).get("fields") === "v2" ? r.error_code : undefined,
+              error_field: new URLSearchParams(location.search).get("fields") === "v2" ? r.error_field : undefined,
+              error: state === "done-partial" && (index === 4 || index === 8) ? "unable to create note" : r.error,
               status:
-                state === "done"
+                state === "done-partial" && (index === 4 || index === 8) ? "error" : (state === "done" || state === "done-partial")
                   ? r.status === "would_create"
                     ? "created"
                     : r.status === "would_duplicate"
@@ -208,7 +229,7 @@
           if (isResponse(fixture, batch.items.length)) response = fixture;
           view = state;
           dueCount = 105;
-          if (state === "done") reviewDeck = { id: 1, name: "Yoin::English" };
+          if (state === "done" || state === "done-partial") reviewDeck = { id: 1, name: "Yoin::English" };
           if (state === "server-error")
             error = { status: 0, unconfirmed: true, message: "" };
           return;
@@ -228,6 +249,7 @@
     };
   });
   function retry() {
+    if (view === "done-partial") { void run(false, true); return; }
     if (error?.status === 401) {
       void goto("/login?next=" + encodeURIComponent("/import?handoff=1"));
       return;

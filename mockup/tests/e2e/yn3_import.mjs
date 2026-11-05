@@ -148,6 +148,8 @@ try {
     );
     throw error;
   }
+  assert(await popup.getByText("和第 1 張相同", {exact: true}).isVisible(), "real first_index rendered");
+  assert(await popup.getByText("會自動建立", {exact: true}).isVisible(), "real decks rendered");
   let cards = await (
     await context.request.get(
       `${uiOrigin}/api/cards?search=tag%3Aorigin%3A%3Ayoin`,
@@ -162,7 +164,8 @@ try {
     "dry-run creates no deck",
   );
   await popup.getByRole("button", { name: "匯入 1 張", exact: true }).click();
-  await popup.waitForSelector('[data-state="done"]');
+  try { await popup.waitForSelector('[data-state="done"]', {timeout: 10000}); }
+  catch (error) {console.error(await popup.locator("body").innerText(), await page.evaluate(() => window.received)); throw error;}
   await page.waitForFunction(() =>
     window.received.some((message) => message.type === "ferdinand:result"),
   );
@@ -264,7 +267,7 @@ try {
   await retry.waitForSelector('[data-state="server-error"]');
   assert(
     (await retry.getByRole("alert").innerText()).includes(
-      "部分卡片可能已寫入。重試是安全的",
+      "這一批可能已經寫入一部分卡片",
     ),
   );
   await page.waitForFunction(
@@ -289,9 +292,56 @@ try {
     )
   ).json();
   assert.equal(cards.total, 2, "uncertain retry creates no extra note");
+  await retry.close();
+  const genericItem = {...fixture, id: createHash("sha256").update("yn3-generic").digest("hex")};
+  const generic = {...batch, items: [genericItem, {...genericItem}], nonce: randomBytes(16).toString("hex")};
+  await context.route("**/api/import/yoin", async route => {
+    const upstream = await route.fetch();
+    const body = await upstream.json();
+    delete body.decks;
+    body.results = body.results.map(({first_index, error_code, error_field, ...r}) => r);
+    await route.fulfill({response: upstream, json: body});
+  });
+  await page.evaluate(batch => {window.batch = batch}, generic);
+  const genericPopup = context.waitForEvent("page");
+  await page.locator("#open").click();
+  const fallback = await genericPopup;
+  await fallback.waitForSelector('[data-state="preview"]');
+  assert(await fallback.getByText("若尚未建立會自動建立", {exact: true}).isVisible(), "generic deck fallback");
+  assert(await fallback.getByText("這批裡重複", {exact: true}).isVisible(), "generic repeat fallback");
+  assert.equal(await fallback.getByText("和第 1 張相同", {exact: true}).count(), 0, "no inferred first_index");
+  await fallback.close();
+  const partialItems = [0,1,2].map(n => ({...fixture, id: createHash("sha256").update(`yn3-partial-${n}`).digest("hex")}));
+  const partialBatch = {...batch, items: partialItems, nonce: randomBytes(16).toString("hex")};
+  let confirmations = 0;
+  await context.route("**/api/import/yoin", async route => {
+    const request = route.request().postDataJSON();
+    if (request.dry_run) {
+      await route.fulfill({json: {dry_run: true, results: request.items.map((_, index) => ({index, status: "would_create", deck: "Yoin::English"}))}});
+    } else {
+      confirmations++;
+      if (confirmations === 1) {
+        await route.fulfill({json: {dry_run: false, results: [{index: 0, status: "created", deck: "Yoin::English"}, {index: 1, status: "error", deck: "Yoin::English", error: "unable to create note"}, {index: 2, status: "created", deck: "Yoin::English"}]}});
+      } else {
+        assert.deepEqual(request.items.map(item => item.id), [partialItems[1].id], "retry sends only failed row");
+        await route.fulfill({json: {dry_run: false, results: [{index: 0, status: "created", deck: "Yoin::English"}]}});
+      }
+    }
+  });
+  await page.evaluate(batch => {window.batch = batch}, partialBatch);
+  const partialPopup = context.waitForEvent("page");
+  await page.locator("#open").click();
+  const partial = await partialPopup;
+  await partial.waitForSelector('[data-state="all-new"]');
+  await partial.getByRole("button", {name: "匯入 3 張", exact: true}).click();
+  await partial.waitForSelector('[data-state="done-partial"]');
+  await partial.getByRole("button", {name: "重試 1 張", exact: true}).click();
+  await partial.waitForSelector('[data-state="done"]');
+  assert.equal(confirmations, 2);
+  assert((await partial.locator('.imp-figure').innerText()).includes('3'), "prior successes retained after retry");
   await context.close();
   console.log(
-    "PASS: 12 scenarios, including navigation cancellation, over-limit, exact first-100 cut, and safe retry after a committed write with a 503 response",
+    "PASS: 16 scenarios, including navigation cancellation, over-limit, exact first-100 cut, and safe retry after a committed write with a 503 response",
   );
 } finally {
   await browser?.close();

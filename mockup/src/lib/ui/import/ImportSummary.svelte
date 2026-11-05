@@ -7,31 +7,33 @@
     total,
     view,
     reviewDeck,
+    onretry,
   }: {
     response: ImportResponse;
     total: number;
     view: string;
+    onretry: () => void;
     reviewDeck?: { id: number; name: string };
   } = $props();
   let pending = $derived(view === "loading" || view === "importing");
   let n = $derived(
     response.results.filter(
-      (r) => r.status === (view === "done" ? "created" : "would_create"),
+      (r) => view === "importing" && !response.dry_run ? r.status === "error" && r.error === "unable to create note" : r.status === ((view === "done" || view === "done-partial") ? "created" : "would_create"),
     ).length,
   );
   let skipped = $derived(total - n);
   let parts = $derived(
     [
-      { shape: "new", word: "新增", n },
+      { shape: response.dry_run ? "new" : "done", word: response.dry_run ? "新增" : "已匯入", n },
       {
         shape: "have",
         word: "已有",
-        n: response.results.filter((r) => r.status === "duplicate").length,
+        n: response.results.filter((r) => r.status === "duplicate" && r.first_index === undefined).length,
       },
       {
         shape: "repeat",
-        word: "重複",
-        n: response.results.filter((r) => r.status === "would_duplicate")
+        word: response.dry_run ? "重複" : "重複略過",
+        n: response.results.filter((r) => r.status === "would_duplicate" || (r.status === "duplicate" && r.first_index !== undefined))
           .length,
       },
       {
@@ -39,7 +41,7 @@
         word: "錯誤",
         n: response.results.filter((r) => r.status === "error").length,
       },
-    ].filter((p) => p.n || p.shape === "new"),
+    ].filter((p) => p.n || p.shape === "new" || p.shape === "done"),
   );
 </script>
 
@@ -51,8 +53,8 @@
   {#if pending}<div class="imp-busy" aria-hidden="true"><span></span></div>{/if}
   <div class="imp-sum-a">
     <p class="label">
-      {view === "done"
-        ? "匯入完成"
+      {(view === "done" || view === "done-partial")
+        ? (view === "done-partial" ? "匯入結果" : "匯入完成")
         : view === "importing"
           ? "正在匯入"
           : `Yoin 送來 ${total} 張`}
@@ -67,12 +69,12 @@
             ? "張…"
             : view === "over-limit"
               ? "張先檢查"
-              : view === "done"
+              : (view === "done" || view === "done-partial")
                 ? "張已加入 Ferdinand"
                 : "張會匯入"}</span
       >
     </p>
-    {#if !pending && view !== "over-limit" && view !== "done" && skipped}<p
+    {#if !pending && view !== "over-limit" && (skipped || !response.dry_run)}<p
         class="imp-split"
       >
         {#each parts as part}<span data-st={part.shape}
@@ -84,7 +86,7 @@
     <p class="imp-note">
       {#if view === "over-limit"}一次最多 100 張。先檢查前 100
         張，看完結果再決定要不要匯入。剩下的 {total - 100} 張留在 Yoin，之後再送。{:else if view === "loading"}正在檢查哪些是新卡片、哪些
-        Ferdinand 已經有了。{:else if view === "importing"}寫入完成後，這裡會一次顯示結果。{:else if view === "done"}<DoneCounts
+        Ferdinand 已經有了。{:else if view === "importing"}寫入完成後，這裡會一次顯示結果。{:else if (view === "done" || view === "done-partial")}<DoneCounts
           {response}
         />{:else if skipped}{parts
           .filter((p) => p.shape !== "new")
@@ -98,14 +100,17 @@
       {response}
       pending={view === "loading"}
       later={view === "over-limit"}
-    />{#if view === "done"}<div class="imp-actions">
-        {#if reviewDeck}<a class="primary" href={`/study/${reviewDeck.id}`}
-            >開始複習 {reviewDeck.name}</a
-          >{/if}
-        <a class="textlink" href="/browse?q=tag%3Aorigin%3A%3Ayoin%20added%3A1"
-          >查看匯入的卡片</a
-        >
-      </div>{/if}
+    />{#if (view === "done" || view === "done-partial")}<div class="imp-actions">
+        {#if view === "done-partial"}
+          <button class="primary" onclick={onretry}>重試 {response.results.filter(r => r.error === "unable to create note").length} 張</button>
+        {:else if reviewDeck}
+          <a class="primary" href={`/study/${reviewDeck.id}`}>開始複習 {reviewDeck.name}</a>
+        {/if}
+        <p class="imp-links" class:partial={view === "done-partial"}>
+          {#if view === "done-partial" && reviewDeck}<a class="textlink" href={`/study/${reviewDeck.id}`}>開始複習 {reviewDeck.name}</a>{/if}
+          <a class="textlink" href="/browse?q=tag%3Aorigin%3A%3Ayoin%20added%3A1">查看匯入的卡片</a>
+        </p>
+      </div><p class="imp-next">可以切換回 Yoin 了；已匯入和已有的卡片會在 Yoin 標成已送出。</p>{/if}
   </div>
 </article>
 
@@ -185,6 +190,9 @@
     border-top: 1px solid var(--hairline);
     min-width: 0;
   }
+  .imp-links { display: flex; flex-wrap: wrap; gap: 0 24px; margin-top: 8px; }
+  .imp-links.partial { flex-basis: 100%; }
+  .imp-next { margin-top: 4px; font-size: 16px; line-height: 26px; color: var(--ink-2); }
   .imp-actions {
     margin-top: 24px;
   }

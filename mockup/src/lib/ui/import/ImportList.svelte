@@ -34,7 +34,7 @@
     data-variant={indexed ? "indexed" : uniform ? "uniform" : undefined}
   >
     <li class="imp-head" aria-hidden="true">
-      <span>語塊</span><span>來源</span>{#if !uniform}<span>結果</span>{/if}
+      <span>語塊</span><span>來源</span>{#if !uniform}<span>{cutTotal ? "去向" : "結果"}</span>{/if}
     </li>
     {#each results as result}{#if cutTotal && result.index === 100}<li
           class="imp-cut"

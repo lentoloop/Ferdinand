@@ -50,6 +50,7 @@ describe("approved import states", () => {
     "loading",
     "importing",
     "done",
+    "done-partial",
     "server-error",
     "empty",
   ] satisfies View[]) {
@@ -105,9 +106,29 @@ describe("approved import states", () => {
       screen.getByRole("button", { name: "匯入中…" }).hasAttribute("disabled"),
     ).toBe(true);
   });
-  it("hides deck existence badges when decks are absent", () => {
+  it("uses generic deck copy when decks are absent", () => {
     const { container } = mount("preview");
-    expect(container.querySelector(".imp-deck-tag")).toBeNull();
+    expect(container.querySelector(".imp-deck-tag")?.textContent).toContain("若尚未建立會自動建立");
+  });
+  it("uses generic repeat wording without first_index", () => {
+    mount("preview", {dry_run: true, results: batch.results.map(({first_index, ...r}) => r)});
+    expect(screen.getByText("這批裡重複")).toBeTruthy();
+  });
+  it("shows only the failed card during a partial retry", () => {
+    const {container} = render(ImportPage, {view: "importing", items: batch.items.slice(0, 2), response: {dry_run: false, results: [{index: 0, status: "created"}, {index: 1, status: "error", error: "unable to create note"}]}, onconfirm: vi.fn(), onfirst: vi.fn(), onretry: vi.fn()});
+    expect(container.querySelectorAll('[data-component="ImportRow"]')).toHaveLength(1);
+    expect(container.querySelector('.imp-figure')?.textContent).toContain("1");
+  });
+  it("renders a failed note creation retry without resending successful rows", async () => {
+    const onretry = vi.fn();
+    render(ImportPage, {view: "done-partial", items: batch.items.slice(0, 2), response: {dry_run: false, results: [{index: 0, status: "created"}, {index: 1, status: "error", error: "unable to create note"}]}, onconfirm: vi.fn(), onfirst: vi.fn(), onretry});
+    expect(screen.getByText(/其他張已匯入；沒寫入的 1 張/)).toBeTruthy();
+    await fireEvent.click(screen.getByRole("button", {name: "重試 1 張"}));
+    expect(onretry).toHaveBeenCalledOnce();
+  });
+  it("renders returned repeat position", () => {
+    mount("preview", {dry_run: true, results: batch.results});
+    expect(screen.getByText("和第 2 張相同")).toBeTruthy();
   });
   it("renders optional deck metadata", () => {
     mount("preview", {
@@ -116,6 +137,20 @@ describe("approved import states", () => {
       decks: [{ name: "Yoin::English", exists: false, would_create: true }],
     });
     expect(screen.getByText("會自動建立")).toBeTruthy();
+  });
+  it("uses the specific error field only when returned", () => {
+    mount("preview", {dry_run: true, results: batch.results.map(r => r.status === "error" ? {...r, error_code: "text_missing", error_field: "meaning_zh"} : r)});
+    expect(screen.getByText("中文意思是空的。")).toBeTruthy();
+  });
+  it("states no writes for a confirmed pre-write rejection", () => {
+    render(ImportPage, {view: "server-error", items: batch.items, response: {dry_run: true, results: []}, error: {status: 401, unconfirmed: false, message: "登入已過期。"}, onconfirm: vi.fn(), onfirst: vi.fn(), onretry: vi.fn()});
+    expect(screen.getByRole("alert").textContent).toContain("沒有寫入任何卡片");
+    expect(screen.queryByText("尚未確認匯入結果")).toBeNull();
+  });
+  it("shows a full reading without ruby", () => {
+    const {container} = mount("preview");
+    expect(container.querySelector("ruby")).toBeNull();
+    expect(container.querySelector(".imp-reading")?.textContent?.trim()).toBeTruthy();
   });
   it("explains uncertain writes and safe retry", () => {
     render(ImportPage, {
@@ -127,9 +162,9 @@ describe("approved import states", () => {
       onfirst: vi.fn(),
       onretry: vi.fn(),
     });
-    expect(screen.getByRole("alert").textContent).toContain(
-      "部分卡片可能已寫入。重試是安全的",
-    );
+    expect(screen.getByRole("alert").textContent).toContain("這一批可能已經寫入一部分卡片");
+    expect(screen.getByRole("alert").textContent).toContain("「重試」很安全");
+    expect(screen.getByRole("alert").textContent).not.toContain("沒有寫入任何卡片");
   });
 });
 describe("handoff boundary", () => {
@@ -176,9 +211,9 @@ describe("handoff boundary", () => {
       ),
     ).toBe(false);
   });
-  it("computes repeats by id and honors first_index", () => {
+  it("uses only the returned first_index", () => {
     const items = [batch.items[0], batch.items[0]];
-    expect(firstIndex(items, { index: 1, status: "would_duplicate" })).toBe(0);
+    expect(firstIndex(items, { index: 1, status: "would_duplicate" })).toBeUndefined();
     expect(
       firstIndex(items, { index: 1, status: "duplicate", first_index: 0 }),
     ).toBe(0);

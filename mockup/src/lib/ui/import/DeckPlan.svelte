@@ -16,7 +16,7 @@
 </script>
 
 <section class="imp-decks" data-component="DeckPlan">
-  <h2 class="label">會放進這些牌組</h2>
+  <h2 class="label">{response.dry_run ? "會放進這些牌組" : "用到的牌組"}</h2>
   <ul>
     {#each names as name}{@const info = response.decks?.find(
         (d) => d.name === name,
@@ -31,12 +31,13 @@
                   ["would_create", "created"].includes(r.status),
               ).length}</b
             > 張{/if}</span
-        >{#if info}<DeckBadge {info} />{/if}
+        >{#if pending}<span class="skel imp-deck-skeleton" aria-hidden="true"></span>{:else}<DeckBadge {info} {later} done={!response.dry_run} />{/if}
       </li>{/each}
   </ul>
 </section>
 
 <style>
+  .imp-deck-skeleton { width: 136px; }
   .imp-decks ul {
     margin-top: 4px;
   }

@@ -405,6 +405,14 @@ async fn preview_and_import_both_reject_filtered_destination() {
     for dry_run in [true, false] {
         let response = app.import("alice", vec![item('a')], dry_run).await;
         assert_eq!(response["results"][0]["status"], "error");
+        assert_eq!(
+            response["decks"],
+            if dry_run {
+                json!([{"name": "Yoin::English", "exists": true, "would_create": false}])
+            } else {
+                json!([{"name": "Yoin::English", "exists": true, "created": false}])
+            }
+        );
     }
     assert!(state
         .col
@@ -574,4 +582,116 @@ async fn recorded_contract_response() {
     let expected: Value =
         serde_json::from_str(include_str!("fixtures/ferdinand-preview.json")).unwrap();
     assert_eq!(response, expected);
+}
+
+#[tokio::test]
+async fn repeat_pointers_and_deck_snapshots() {
+    let app = TestApp::new();
+    let mut invalid = item('a');
+    invalid["chunk"] = json!("");
+    let mut ja = item('b');
+    ja["lang"] = json!("ja");
+    ja["reading"] = json!("よみ");
+    for dry_run in [true, false] {
+        let response = app
+            .import(
+                "demo",
+                vec![invalid.clone(), item('a'), item('a'), ja.clone()],
+                dry_run,
+            )
+            .await;
+        assert_eq!(response["results"][2]["first_index"], 1);
+        for index in [0, 1, 3] {
+            assert!(response["results"][index].get("first_index").is_none());
+        }
+        for (index, name) in ["Yoin::English", "Yoin::日本語"].into_iter().enumerate() {
+            let expected = if dry_run {
+                json!({"name": name, "exists": false, "would_create": true})
+            } else {
+                json!({"name": name, "exists": false, "created": true})
+            };
+            assert_eq!(response["decks"][index], expected);
+        }
+    }
+    for dry_run in [true, false] {
+        let response = app
+            .import("demo", vec![item('a'), item('a')], dry_run)
+            .await;
+        for result in response["results"].as_array().unwrap() {
+            assert_eq!(result["status"], "duplicate");
+            assert!(result.get("first_index").is_none());
+        }
+        assert_eq!(
+            response["decks"],
+            if dry_run {
+                json!([{"name": "Yoin::English", "exists": true, "would_create": false}])
+            } else {
+                json!([{"name": "Yoin::English", "exists": true, "created": false}])
+            }
+        );
+        let response = app.import("demo", vec![invalid.clone()], dry_run).await;
+        assert_eq!(response["decks"], json!([]));
+    }
+    // A duplicate can target a missing deck without planning or creating it.
+    let mut moved_target = item('a');
+    moved_target["lang"] = json!("ja");
+    moved_target["reading"] = json!("よみ");
+    app.import("other-demo", vec![item('a')], false).await;
+    for dry_run in [true, false] {
+        let response = app
+            .import("other-demo", vec![moved_target.clone()], dry_run)
+            .await;
+        assert_eq!(
+            response["decks"],
+            if dry_run {
+                json!([{"name": "Yoin::日本語", "exists": false, "would_create": false}])
+            } else {
+                json!([{"name": "Yoin::日本語", "exists": false, "created": false}])
+            }
+        );
+    }
+}
+
+#[tokio::test]
+async fn created_deck_is_reported_when_all_notes_fail() {
+    let app = TestApp::new();
+    let state = app.state.app_state_for("demo").await.unwrap();
+    state.col.lock().await.storage.db().execute_batch(
+        "CREATE TEMP TRIGGER reject_import BEFORE INSERT ON notes BEGIN SELECT RAISE(FAIL, 'test failure'); END;",
+    ).unwrap();
+    let response = app.import("demo", vec![item('a'), item('a')], false).await;
+    assert_eq!(
+        response["decks"],
+        json!([
+            {"name": "Yoin::English", "exists": false, "created": true}
+        ])
+    );
+    for result in response["results"].as_array().unwrap() {
+        assert_eq!(result["error"], "unable to create note");
+        assert!(result.get("first_index").is_none());
+    }
+    {
+        let col = state.col.lock().await;
+        assert!(col.get_deck_id("Yoin::English").unwrap().is_some());
+        assert!(col.storage.get_all_note_ids().unwrap().is_empty());
+        col.storage
+            .db()
+            .execute_batch("DROP TRIGGER reject_import")
+            .unwrap();
+    }
+    state.col.lock().await.storage.db().execute_batch(
+        "CREATE TEMP TRIGGER reject_first BEFORE INSERT ON notes WHEN NEW.flds LIKE 'reject%' BEGIN SELECT RAISE(FAIL, 'test failure'); END;",
+    ).unwrap();
+    let mut failed = item('a');
+    failed["chunk"] = json!("reject");
+    let response = app
+        .import("demo", vec![failed, item('a'), item('a')], false)
+        .await;
+    assert_eq!(response["results"][0]["status"], "error");
+    assert!(response["results"][0].get("first_index").is_none());
+    assert_eq!(response["results"][1]["status"], "created");
+    assert!(response["results"][1].get("first_index").is_none());
+    assert_eq!(response["results"][2]["first_index"], 1);
+    assert_eq!(response["decks"][0]["exists"], true);
+    assert_eq!(response["decks"][0]["created"], false);
 }
